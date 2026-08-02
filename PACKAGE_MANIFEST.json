@@ -1,0 +1,181 @@
+{
+  "files": [
+    {
+      "bytes": 70,
+      "path": ".dockerignore",
+      "sha256": "0a3136e9a47f7addc2aec92be867e7e6f95f78c79badbe617049bd664e63c696"
+    },
+    {
+      "bytes": 500,
+      "path": ".env.example",
+      "sha256": "462e18365ef389e96e14d63398f5127a9fbf720126b252c7fda205c253d3b473"
+    },
+    {
+      "bytes": 68,
+      "path": ".gitignore",
+      "sha256": "ddd417795a21925783da8b9e37b0fac1d670d4bc4e29758664f2286a17f2b8f9"
+    },
+    {
+      "bytes": 1185,
+      "path": "CHANGELOG.md",
+      "sha256": "e75e03520cad2e542af9fee704260bc5a3db3c1f05a78b56187a5061dccc773b"
+    },
+    {
+      "bytes": 13944,
+      "path": "DEPLOYMENT.md",
+      "sha256": "19fb7b76bd2fdb6b770ec50b357f8ce4b0c6cde630ec37e0db43a80865f317b6"
+    },
+    {
+      "bytes": 254,
+      "path": "Dockerfile",
+      "sha256": "30b31bb926a8397de388f27e4a290fa9330646f5797e997bb35f60d508b2a5c5"
+    },
+    {
+      "bytes": 9111,
+      "path": "MODEL_SPEC.md",
+      "sha256": "d93cfeb00e4b9e48e8685378e5907dcaefd7a22dd6919fd99ecb7544626b99b3"
+    },
+    {
+      "bytes": 6124,
+      "path": "README.md",
+      "sha256": "b836f8af35f9aaf9e1dd1374541b402f7c1a40a309cb0dd847b065d396541a8d"
+    },
+    {
+      "bytes": 6978,
+      "path": "TROUBLESHOOTING.md",
+      "sha256": "a15771de3e7a2c8454ff99d2e02a710a374fdf7963789c98bc8d5bd0bb29a612"
+    },
+    {
+      "bytes": 4311,
+      "path": "VALIDATION_RESULTS.txt",
+      "sha256": "600cfa6d551fd451f83057bf2e933d52628e09866e6fff200118a91f5baef12d"
+    },
+    {
+      "bytes": 22,
+      "path": "app/__init__.py",
+      "sha256": "27e8febb48ada44153ea2add9969a2c50a9831a74d9755fdd53c549a888b1cc2"
+    },
+    {
+      "bytes": 3650,
+      "path": "app/alpaca.py",
+      "sha256": "eb0ce2ff161ced2d8bbf0292be3f601f2f7bde4978feb4ed04abd7c9afb87b34"
+    },
+    {
+      "bytes": 392,
+      "path": "app/auth.py",
+      "sha256": "277035f9ea5c40c11cd2716ce2c0b9836dfa1953603939ff8fcf41fc648b1847"
+    },
+    {
+      "bytes": 3231,
+      "path": "app/config.py",
+      "sha256": "fad27ffc8da1c336954c5d694da4118b0e8758ce6491152a2e9fca91f537f5df"
+    },
+    {
+      "bytes": 1619,
+      "path": "app/db.py",
+      "sha256": "a08e33abac3803265eb1b29772e3f23c7d81b3fdad984c59cf81888bea3fa491"
+    },
+    {
+      "bytes": 4741,
+      "path": "app/exports.py",
+      "sha256": "de743a3d1008ed463b19fa593e675cc2dc79ea09ff6ad6fba9e7f29c0845a209"
+    },
+    {
+      "bytes": 17837,
+      "path": "app/main.py",
+      "sha256": "eeb74c75dfa3c864637fa3c55175a37fd050c6f9a5ec80a901522ea42884a6cb"
+    },
+    {
+      "bytes": 23224,
+      "path": "app/research.py",
+      "sha256": "3c21e9777c4533216c322edba164c4daabe0da49c8bc4e879fd2cdaf21ecb54f"
+    },
+    {
+      "bytes": 7015,
+      "path": "app/static/styles.css",
+      "sha256": "965f61c61de6a7743ed3952273a4eeebfce9e89476033bcd1cd59bdd88f7f5e7"
+    },
+    {
+      "bytes": 806,
+      "path": "app/templates/base.html",
+      "sha256": "c00987428fadf68cf64075a4f26149d724431d18b6619fce027e1a44722c9cbc"
+    },
+    {
+      "bytes": 6776,
+      "path": "app/templates/dashboard.html",
+      "sha256": "41b72415af65f03b151d5f0d7b271bc54fa9a61bb12818c69d926cbf5fb537d9"
+    },
+    {
+      "bytes": 683,
+      "path": "app/templates/login.html",
+      "sha256": "0336585f66b223ec1ad23cad9f75fab86f8bfad30ef066171df971c1196dd2ae"
+    },
+    {
+      "bytes": 7479,
+      "path": "app/templates/run_detail.html",
+      "sha256": "3d2596ee43de674363746e474a3eb3f7363f3919bd2100a703d04df0f162b61d"
+    },
+    {
+      "bytes": 39919,
+      "path": "app/worker.py",
+      "sha256": "7f51c053eca26e558660f9de74f546a176b59c3a128410e5ca8620ed969d63ba"
+    },
+    {
+      "bytes": 66,
+      "path": "examples/candidate_dates_template.csv",
+      "sha256": "1fdbd6508b038280e3adddc40dffe17661de7516dd8363d07f0b6bd95a2420b5"
+    },
+    {
+      "bytes": 1184,
+      "path": "render.yaml",
+      "sha256": "abffa5ac1a27516e192a12bac54ba77175dfead196329277988fc2cc78f68607"
+    },
+    {
+      "bytes": 200,
+      "path": "requirements.txt",
+      "sha256": "3bb27dc40cf5f2e4c1503cc7c8c282ca8a337af311063113ef98c714ac3e518c"
+    },
+    {
+      "bytes": 1231,
+      "path": "scripts/check_package.py",
+      "sha256": "bf24312a13245e8a3be072c096f0a718964f7f74b1ae8d610f85de9e3e083737"
+    },
+    {
+      "bytes": 666,
+      "path": "scripts/export_clean_trials.sql",
+      "sha256": "b1b1f6091bc85b2d287371363c4e64a3c07a699cb7bbd1e6dd0bc9ff5eb63e06"
+    },
+    {
+      "bytes": 535,
+      "path": "scripts/verify.sql",
+      "sha256": "ffa94d5924419c74cab6e884e945cb272d8b1a7c50b95c43c1a4074e21db8dd2"
+    },
+    {
+      "bytes": 9486,
+      "path": "supabase/migration_add_dip_lab.sql",
+      "sha256": "729b062bd2a8ebfdc0189f3451e77e4a63e131bb543c6dceaac137b1ba762afc"
+    },
+    {
+      "bytes": 9486,
+      "path": "supabase/schema.sql",
+      "sha256": "729b062bd2a8ebfdc0189f3451e77e4a63e131bb543c6dceaac137b1ba762afc"
+    },
+    {
+      "bytes": 144,
+      "path": "tests/conftest.py",
+      "sha256": "6d34c88cfc06ba1a91f2333fa65f64d270aaa45f686f86b551dbb9dfbef88085"
+    },
+    {
+      "bytes": 1202,
+      "path": "tests/test_config.py",
+      "sha256": "b48beecb1996305c412d3bf6a6f7c874ba51df4166c91acc9e3167bf41a197a4"
+    },
+    {
+      "bytes": 11461,
+      "path": "tests/test_research.py",
+      "sha256": "422697faf421e467d203bbed3862987428de9909a4c996cd81cd5271f9d4e7c6"
+    }
+  ],
+  "package": "alpaca-buy-the-dip-timing-lab",
+  "version": "1.0.0"
+}

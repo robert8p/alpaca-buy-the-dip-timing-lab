@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Dip Timing Lab{% endblock %}
+{% block content %}
+<section class="login-card card">
+  <div class="eyebrow">PRIVATE RESEARCH DASHBOARD</div>
+  <h1>Sign in</h1>
+  <p>Use the credentials stored in Render environment variables.</p>
+  {% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="stack">
+    <label>Username<input name="username" autocomplete="username" required></label>
+    <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit">Open dashboard</button>
+  </form>
+</section>
+{% endblock %}

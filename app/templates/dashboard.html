@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Dip Timing Lab{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <div class="eyebrow">EXECUTABLE ENTRY-TIMING RESEARCH</div>
+    <h1>Find when a dip becomes buyable—not merely when it looks cheap.</h1>
+    <p>Every candidate is replayed through fixed entry times and confirmation rules using split-adjusted one-minute bars, conservative target/stop ordering and chronological validation.</p>
+  </div>
+  <div class="runtime card">
+    <span class="status-dot {{ runtime.worker_status if runtime else 'unknown' }}"></span>
+    <div><small>Worker</small><strong>{{ runtime.worker_status if runtime else 'unknown' }}</strong></div>
+    <div><small>Heartbeat</small><strong>{{ runtime.heartbeat_at if runtime and runtime.heartbeat_at else 'not yet' }}</strong></div>
+    {% if runtime and runtime.last_error %}<div class="runtime-error">{{ runtime.last_error }}</div>{% endif %}
+  </div>
+</section>
+
+<div class="grid two">
+<section class="card">
+  <div class="section-head"><div><div class="eyebrow">NEW RUN</div><h2>Historical timing calibration</h2></div></div>
+  <form method="post" action="/runs" class="form-grid">
+    <label class="span-2">Run name<input name="name" value="12:30 ET dip-entry calibration" required></label>
+    <label>Candidate source
+      <select name="source_mode">
+        <option value="scanner_alerts">Existing midday scanner alerts</option>
+        <option value="manual_symbols">Manual symbol list</option>
+      </select>
+    </label>
+    <label>Symbols (manual mode)<textarea name="symbols_text" rows="2" placeholder="AAPL, MSFT, NVDA"></textarea></label>
+    <label>Start date<input type="date" name="start_date" required></label>
+    <label>End date<input type="date" name="end_date" required></label>
+    <label>Signal cutoff (ET)<input name="cutoff_et" value="12:30" required></label>
+    <label>Fixed entries (ET)<input name="fixed_entry_times_et" value="12:31,12:35,12:45,13:00" required></label>
+    <fieldset class="span-2"><legend>Confirmation entries</legend>
+      <label class="check"><input type="checkbox" name="confirmation_variants" value="higher_low" checked> First higher low + green bar</label>
+      <label class="check"><input type="checkbox" name="confirmation_variants" value="vwap_reclaim" checked> First VWAP reclaim</label>
+      <label class="check"><input type="checkbox" name="confirmation_variants" value="prior_bar_high" checked> First close above prior bar high</label>
+      <label class="check"><input type="checkbox" name="confirmation_variants" value="five_bar_break"> First five-bar high break</label>
+    </fieldset>
+    <label>Net target %<input type="number" step="0.1" name="target_net_pct" value="3.0"></label>
+    <label>Gross target trigger %<input type="number" step="0.1" name="target_gross_pct" value="3.5"></label>
+    <label>Stop loss %<input type="number" step="0.1" name="stop_loss_pct" value="5.0"></label>
+    <label>Cost tests (bps)<input name="cost_bps" value="{{ default_costs }}"></label>
+    <label>Minimum price (US$)<input type="number" step="0.01" name="min_price" value="2"></label>
+    <label>Maximum price (US$)<input type="number" step="0.01" name="max_price" value="50"></label>
+    <label>Min dollar volume by cutoff<input type="number" step="100000" name="min_dollar_volume" value="5000000"></label>
+    <label>Minimum pullback from high %<input type="number" step="0.1" name="dip_from_high_pct" value="3"></label>
+    <label>Minimum decline from open %<input type="number" step="0.1" name="dip_from_open_pct" value="1"></label>
+    <label class="check span-2"><input type="checkbox" name="apply_dip_filter" checked> Apply the frozen dip gate</label>
+    <label class="check span-2"><input type="checkbox" name="require_below_vwap" checked> Require price below cumulative VWAP at 12:30 ET</label>
+    <div class="span-2 note">Defaults are hypotheses, not findings. Change them only before a run, then keep the sealed split closed until validation decisions are frozen. Strict validation normally needs at least 100 independent candidate dates; a 60-day run is diagnostic only.</div>
+    <button class="span-2" type="submit">Queue timing calibration</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="eyebrow">ALTERNATIVE INPUT</div><h2>Upload candidate dates</h2>
+  <p>Use this when you already have a candidate list. The CSV must contain <code>trade_date</code> and <code>symbol</code>.</p>
+  <form method="post" action="/runs/upload" enctype="multipart/form-data" class="stack">
+    <label>Run name<input name="name" value="Uploaded candidate timing test" required></label>
+    <label>Candidate CSV<input type="file" name="file" accept=".csv,text/csv" required></label>
+    <label>Signal cutoff (ET)<input name="cutoff_et" value="12:30"></label>
+    <label>Fixed entries (ET)<input name="fixed_entry_times_et" value="12:31,12:35,12:45,13:00"></label>
+    <label>Net target %<input type="number" step="0.1" name="target_net_pct" value="3.0"></label>
+    <label>Gross target trigger %<input type="number" step="0.1" name="target_gross_pct" value="3.5"></label>
+    <label>Stop loss %<input type="number" step="0.1" name="stop_loss_pct" value="5.0"></label>
+    <label>Cost tests (bps)<input name="cost_bps" value="{{ default_costs }}"></label>
+    <button type="submit">Upload and queue</button>
+  </form>
+  <div class="callout"><strong>Why separate?</strong><br>It prevents the app from silently redefining what counts as a dip after seeing which entries worked.</div>
+</section>
+</div>
+
+<section class="card">
+  <div class="section-head"><div><div class="eyebrow">RUN HISTORY</div><h2>Research runs</h2></div></div>
+  {% if runs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Period</th><th>Status</th><th>Progress</th><th>Winner</th><th>Verdict</th><th></th></tr></thead>
+    <tbody>{% for run in runs %}
+      <tr>
+        <td><strong>{{ run.name }}</strong><small>{{ run.source_mode }}</small></td>
+        <td>{{ run.start_date }} → {{ run.end_date }}</td>
+        <td><span class="pill {{ run.status }}">{{ run.status }}</span><small>{{ run.stage }}</small></td>
+        <td>{{ run.completed_candidate_count }}/{{ run.candidate_count }} candidates<br><small>{{ run.trial_count }} trials · {{ run.issue_count }} issues</small></td>
+        <td>{% if run.winner_variant %}<strong>{{ run.winner_variant }}</strong><small>{{ run.winner_segment or 'all' }}</small>{% else %}—{% endif %}</td>
+        <td>{{ run.verdict or 'pending' }}</td>
+        <td><a class="button small" href="/runs/{{ run.id }}">Open</a></td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">No runs yet.</div>{% endif %}
+</section>
+{% endblock %}

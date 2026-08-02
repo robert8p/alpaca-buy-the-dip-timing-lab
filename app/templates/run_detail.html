@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ run.name }} · Dip Timing Lab{% endblock %}
+{% block content %}
+{% if run.status in ['queued','running'] %}<script>setTimeout(function(){ window.location.reload(); }, 15000);</script>{% endif %}
+<a class="back" href="/">← Dashboard</a>
+<section class="hero compact">
+  <div><div class="eyebrow">RUN {{ run.id }}</div><h1>{{ run.name }}</h1><p>{{ run.start_date }} to {{ run.end_date }} · {{ run.source_mode }} · cutoff {{ run.cutoff_et }} ET</p></div>
+  <div class="verdict card"><small>Current verdict</small><strong>{{ run.verdict or 'pending' }}</strong><span>Winner: {% if run.winner_variant %}{{ run.winner_segment or 'all' }} · {{ run.winner_variant }}{% else %}not selected{% endif %}</span>{% if not run.winner_variant and run.result_json and run.result_json.best_validation_variant %}<small>Diagnostic best only: {{ run.result_json.best_validation_segment }} · {{ run.result_json.best_validation_variant }}</small>{% endif %}</div>
+</section>
+
+<div class="progress-card card">
+  <div class="progress-meta"><strong>{{ run.status }}</strong><span>{{ run.stage }}</span><span>{{ run.completed_candidate_count }}/{{ run.candidate_count }} candidates</span></div>
+  {% set pct = (100 * run.completed_candidate_count / run.candidate_count) if run.candidate_count else 0 %}
+  <div class="progress"><span style="width: {{ pct }}%"></span></div>
+  {% if run.last_error %}<div class="alert danger">{{ run.last_error }}</div>{% endif %}
+  <div class="actions">
+    {% if run.status in ['queued','running'] %}<form method="post" action="/runs/{{ run.id }}/cancel"><button class="danger-outline">Request cancellation</button></form>{% endif %}
+    {% if run.status in ['failed','cancelled','completed_with_warnings'] %}<form method="post" action="/runs/{{ run.id }}/retry"><button>Retry and resume</button></form>{% endif %}
+    <a class="button ghost-button" href="/runs/{{ run.id }}/export">Download current export</a>
+  </div>
+</div>
+
+<div class="grid four stats">
+  <div class="card"><small>Candidates</small><strong>{{ run.candidate_count }}</strong></div>
+  <div class="card"><small>Accounted for</small><strong>{{ run.completed_candidate_count }}</strong></div>
+  <div class="card"><small>Entry trials</small><strong>{{ run.trial_count }}</strong></div>
+  <div class="card"><small>Issues</small><strong>{{ run.issue_count }}</strong></div>
+</div>
+
+<section class="card">
+  <div class="section-head"><div><div class="eyebrow">EVIDENCE</div><h2>Entry-variant metrics</h2></div>
+  {% if not run.sealed_opened and run.status == 'completed' and run.winner_variant %}
+  <form method="post" action="/runs/{{ run.id }}/open-sealed" onsubmit="return confirm('Open the sealed test? Do this only after accepting the validation winner and making no further rule changes.');"><button class="warning">Open sealed test</button></form>
+  {% endif %}</div>
+  <p class="muted">Returns are net of the displayed cost assumption. The selected winner comes from validation only; discovery is exploratory.</p>
+  {% if metrics %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Split</th><th>Segment</th><th>Variant</th><th>Entry ET</th><th>Costs</th><th>N / dates</th><th>Net-target success</th><th>Date-CI lower</th><th>Mean net</th><th>Median net</th><th>Loss ≥5%</th><th>95% CI</th><th>q-value</th></tr></thead>
+    <tbody>{% for m in metrics %}
+      <tr class="{% if m.variant_key == run.winner_variant and m.segment_key == (run.winner_segment or 'all') %}winner-row{% endif %}">
+        <td><span class="pill split">{{ m.split }}</span></td>
+        <td>{{ m.segment_key }}</td>
+        <td><strong>{{ m.variant_key }}</strong>{% if m.variant_key == run.winner_variant and m.segment_key == (run.winner_segment or 'all') %}<small>validation-selected</small>{% endif %}</td>
+        <td>{{ m.metrics_json.median_entry_time_et or '—' }}{% if m.metrics_json.p25_entry_time_et and m.metrics_json.p75_entry_time_et %}<small>{{ m.metrics_json.p25_entry_time_et }}–{{ m.metrics_json.p75_entry_time_et }}</small>{% endif %}</td>
+        <td>{{ m.cost_bps }} bps</td>
+        <td>{{ m.observations }} / {{ m.independent_dates or 0 }}</td>
+        <td>{{ '%.1f'|format(m.net_target_success_rate_pct or 0) }}%</td>
+        <td>{{ '%.1f'|format(m.net_target_daily_ci_low_pct or 0) }}%</td>
+        <td>{{ '%.3f'|format(m.mean_net_return_pct or 0) }}%</td>
+        <td>{{ '%.3f'|format(m.median_net_return_pct or 0) }}%</td>
+        <td>{{ '%.1f'|format(m.loss_5pct_rate_pct or 0) }}%</td>
+        <td>{{ '%.3f'|format(m.bootstrap_ci_low_pct or 0) }} to {{ '%.3f'|format(m.bootstrap_ci_high_pct or 0) }}</td>
+        <td>{{ '%.4f'|format(m.q_value if m.q_value is not none else 1) }}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">Metrics will appear after candidate processing completes.</div>{% endif %}
+  {% if run.result_json and run.result_json.selection_cost_bps is not none %}<div class="note">Winner selection uses the highest configured cost: <strong>{{ run.result_json.selection_cost_bps }} bps</strong>.</div>{% endif %}
+  {% if run.result_json and run.result_json.reasons %}<div class="alert warning"><strong>Evidence warnings</strong><ul>{% for reason in run.result_json.reasons %}<li>{{ reason }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if run.result_json and run.result_json.sealed_reasons %}<div class="alert warning"><strong>Sealed-test warnings</strong><ul>{% for reason in run.result_json.sealed_reasons %}<li>{{ reason }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if not run.sealed_opened %}
+  <div class="sealed">🔒 Sealed candidates have not been processed. The current export excludes them.</div>
+  {% elif run.status in ['queued','running'] %}
+  <div class="callout"><strong>Sealed test processing.</strong> Only the validation-selected variant will be evaluated.</div>
+  {% else %}
+  <div class="callout"><strong>Sealed test completed.</strong> Do not retune the winning rule using these results.</div>
+  {% endif %}
+</section>
+
+<div class="grid two">
+<section class="card">
+  <div class="eyebrow">CANDIDATE PIPELINE</div><h2>Status counts</h2>
+  <div class="status-list">{% for row in candidate_statuses %}<div><span>{{ row.status }}</span><strong>{{ row.n }}</strong></div>{% endfor %}</div>
+</section>
+<section class="card">
+  <div class="eyebrow">RUN CONFIGURATION</div><h2>Frozen assumptions</h2>
+  <dl>
+    <dt>Fixed entries</dt><dd>{{ run.fixed_entry_times_et }}</dd>
+    <dt>Confirmations</dt><dd>{{ run.confirmation_variants }}</dd>
+    <dt>Net target / gross trigger / stop</dt><dd>{{ run.target_net_pct }}% / {{ run.target_gross_pct }}% / {{ run.stop_loss_pct }}%</dd>
+    <dt>Cost tests</dt><dd>{{ run.cost_bps }} bps</dd>
+    <dt>Dip gate</dt><dd>{{ run.dip_from_high_pct }}% from high; {{ run.dip_from_open_pct }}% from open; below VWAP={{ run.require_below_vwap }}</dd>
+    <dt>Pre-registered price segments</dt><dd>all; $2–5; $5–20; $20–50</dd>
+  </dl>
+</section>
+</div>
+
+<section class="card">
+  <div class="eyebrow">AUDIT TRAIL</div><h2>Latest issues</h2>
+  {% if issues %}<div class="issue-list">{% for issue in issues %}<div class="issue {{ issue.severity }}"><strong>{{ issue.stage }}</strong><span>{{ issue.symbol or '' }} {{ issue.trade_date or '' }}</span><p>{{ issue.message }}</p><small>{{ issue.created_at }}</small></div>{% endfor %}</div>
+  {% else %}<div class="empty">No issues recorded.</div>{% endif %}
+</section>
+{% endblock %}
