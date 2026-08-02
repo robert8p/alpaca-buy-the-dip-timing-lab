@@ -1,4 +1,4 @@
-Alpaca Buy-the-Dip Timing Lab v1.0.1
+Alpaca Buy-the-Dip Timing Lab v1.0.2
 Validation date: 2026-08-02
 ============================================================
 
@@ -8,7 +8,7 @@ NOT YET END-TO-END PROVEN against the user's live Supabase and Alpaca accounts.
 
 AUTOMATED TESTS
 Command: pytest -q
-Result: 23 passed in 0.79s
+Result: 24 passed
 
 The test suite covers:
 - exact requested one-minute entry rather than forward-filling a missing minute;
@@ -26,7 +26,8 @@ The test suite covers:
 - actual confirmation-entry time distribution reporting;
 - Wilson success bounds and multiple-testing correction;
 - evidence gating before cross-variant ranking, preventing tiny perfect samples from winning;
-- web and worker environment validation.
+- web and worker environment validation;
+- PostgreSQL stale-recovery target-column qualification.
 
 STATIC VALIDATION
 - Python compileall: passed for app, tests and scripts.
@@ -42,7 +43,7 @@ STATIC VALIDATION
 - Supabase full schema and additive migration: byte-identical.
 - Alpaca endpoint scan: market-data bars and market calendar only.
 - Order/account/position endpoint scan: none found.
-- Package inventory before manifest: 35 files.
+- Package inventory before manifest: 37 files.
 
 RESEARCH-INTEGRITY CONTROLS CONFIRMED IN CODE
 - Historical completed dates only.

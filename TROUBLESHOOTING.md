@@ -189,3 +189,9 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 10000
 ```
 
 Save the change and select **Manual Deploy → Deploy latest commit**. Render's default web-service port is 10000.
+
+## Worker crashes with `column reference "retry_count" is ambiguous`
+
+This affected v1.0.1 during the stale-work recovery check. The recovery query used `UPDATE ... FROM` against `dip_candidates` and `dip_runs`, both of which contain `retry_count` and `last_error`. PostgreSQL therefore required explicit target-table qualification.
+
+Upgrade to v1.0.2 or change the recovery assignments in `app/worker.py` to use `c.retry_count` and `c.last_error`. No Supabase schema change is required.

@@ -37,6 +37,6 @@ for path in sorted(ROOT.rglob("*")):
     content = path.read_bytes()
     files.append({"path": relative, "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest()})
 
-manifest = {"package": "alpaca-buy-the-dip-timing-lab", "version": "1.0.1", "files": files}
+manifest = {"package": "alpaca-buy-the-dip-timing-lab", "version": "1.0.2", "files": files}
 (ROOT / "PACKAGE_MANIFEST.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 print(f"Validated {len(files)} files")

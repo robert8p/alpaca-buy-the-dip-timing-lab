@@ -89,10 +89,10 @@ def _recover_stale_work() -> None:
     """Recover work abandoned by a killed/redeployed single worker."""
     execute(
         """
-        update public.dip_candidates c
-        set status='queued', retry_count=retry_count+1,
-            last_error=coalesce(last_error || '; ', '') || 'requeued_after_stale_worker'
-        from public.dip_runs r
+        update public.dip_candidates as c
+        set status='queued', retry_count=c.retry_count+1,
+            last_error=coalesce(c.last_error || '; ', '') || 'requeued_after_stale_worker'
+        from public.dip_runs as r
         where c.run_id=r.id
           and c.status='running'
           and r.status='running'
@@ -102,14 +102,14 @@ def _recover_stale_work() -> None:
     )
     execute(
         """
-        update public.dip_runs
-        set status=case when cancel_requested then 'cancelled' else 'queued' end,
-            stage=case when cancel_requested then 'cancelled_after_worker_restart' else 'recovered_after_worker_restart' end,
-            retry_count=retry_count+1,
-            last_error=case when cancel_requested then last_error else coalesce(last_error || '; ', '') || 'worker heartbeat became stale; run requeued' end,
-            completed_at=case when cancel_requested then now() else completed_at end
-        where status='running'
-          and coalesce(heartbeat_at, started_at, created_at) < now() - make_interval(mins => %s)
+        update public.dip_runs as dr
+        set status=case when dr.cancel_requested then 'cancelled' else 'queued' end,
+            stage=case when dr.cancel_requested then 'cancelled_after_worker_restart' else 'recovered_after_worker_restart' end,
+            retry_count=dr.retry_count+1,
+            last_error=case when dr.cancel_requested then dr.last_error else coalesce(dr.last_error || '; ', '') || 'worker heartbeat became stale; run requeued' end,
+            completed_at=case when dr.cancel_requested then now() else dr.completed_at end
+        where dr.status='running'
+          and coalesce(dr.heartbeat_at, dr.started_at, dr.created_at) < now() - make_interval(mins => %s)
         """,
         (settings.stale_work_minutes,),
     )

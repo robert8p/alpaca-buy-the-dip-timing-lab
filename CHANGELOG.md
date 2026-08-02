@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 — PostgreSQL stale-recovery fix
+
+- Qualified `retry_count` and `last_error` with the `dip_candidates` target alias in the `UPDATE ... FROM` stale-work recovery query.
+- Qualified all `dip_runs` columns in the companion recovery update for consistency and future safety.
+- Prevents PostgreSQL `AmbiguousColumn` crashes during worker startup after a deploy or restart.
+- Added an automated regression test for the recovery SQL.
+
 ## 1.0.1 — Render startup fix
 
 - Removed the quoted web `dockerCommand` from `render.yaml`.

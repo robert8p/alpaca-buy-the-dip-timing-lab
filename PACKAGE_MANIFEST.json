@@ -16,9 +16,9 @@
       "sha256": "ddd417795a21925783da8b9e37b0fac1d670d4bc4e29758664f2286a17f2b8f9"
     },
     {
-      "bytes": 1505,
+      "bytes": 1943,
       "path": "CHANGELOG.md",
-      "sha256": "605c14d4d6c686330ed74818e16e6e861d451e5cd10446178c3899b6a356592f"
+      "sha256": "0e3519bc6c302b5e879a9eb07697de4a7f68ef368b7a76d7b29a9f3c471a7409"
     },
     {
       "bytes": 13944,
@@ -38,22 +38,22 @@
     {
       "bytes": 6124,
       "path": "README.md",
-      "sha256": "62ea8e989d9ade73d6718f148c4adf8839f3b694f84e2312a8a93dc78657dc46"
+      "sha256": "05e7ad1448948f9233f4b5d231da6f4925f166325fb354f07fff85fd98f18971"
     },
     {
-      "bytes": 7671,
+      "bytes": 8160,
       "path": "TROUBLESHOOTING.md",
-      "sha256": "2dd8132ebb106893c32a4bc4bb0d2abb63b7316f9a2033c349aeaef171baa62b"
+      "sha256": "2ffc90f9283301d85ac979ecf19f5408c843ab5c6aab04841b63ded9f811cfa2"
     },
     {
-      "bytes": 4311,
+      "bytes": 4359,
       "path": "VALIDATION_RESULTS.txt",
-      "sha256": "1d60330b58243575198ae7e1e1d83ebab9d5ef93b763647f2b38610cce97d2af"
+      "sha256": "3e60f99d081fb7291ac04348abaa2c0e4e7dbf01c70de4d34f40125f5567b4bf"
     },
     {
       "bytes": 22,
       "path": "app/__init__.py",
-      "sha256": "7784076264bfdf48f484f37c36634f9d0fd9d13a610d16eee0cb508fd713f5ef"
+      "sha256": "6372d27d18a84a5db1721ef4a6afd42e5bf21025f212d37792b55a59e1b26b19"
     },
     {
       "bytes": 3650,
@@ -116,9 +116,9 @@
       "sha256": "3d2596ee43de674363746e474a3eb3f7363f3919bd2100a703d04df0f162b61d"
     },
     {
-      "bytes": 39919,
+      "bytes": 39971,
       "path": "app/worker.py",
-      "sha256": "7f51c053eca26e558660f9de74f546a176b59c3a128410e5ca8620ed969d63ba"
+      "sha256": "e9e688de75654bef544c31ebff07b5e65e499d112f3ac5361aa9ca38b586080e"
     },
     {
       "bytes": 66,
@@ -138,7 +138,7 @@
     {
       "bytes": 1231,
       "path": "scripts/check_package.py",
-      "sha256": "901dece3a569d390d11ac28868459b92f35eec6f9f46795cd46c94380883eb86"
+      "sha256": "6a2df8e6775ddbad1fd83cacfead124f7f8f98d49a38672ccf63c964e47a355f"
     },
     {
       "bytes": 666,
@@ -158,12 +158,12 @@
     {
       "bytes": 9486,
       "path": "supabase/migration_add_dip_lab.sql",
-      "sha256": "aab33e651d6fa2c357131fd49f213936c4ed54458976b706516f9b67b170203a"
+      "sha256": "a038ece137e56dc22a19223cd042eccbe8c262096cbecc56e8c2fda28e4ff282"
     },
     {
       "bytes": 9486,
       "path": "supabase/schema.sql",
-      "sha256": "aab33e651d6fa2c357131fd49f213936c4ed54458976b706516f9b67b170203a"
+      "sha256": "a038ece137e56dc22a19223cd042eccbe8c262096cbecc56e8c2fda28e4ff282"
     },
     {
       "bytes": 144,
@@ -179,8 +179,13 @@
       "bytes": 11461,
       "path": "tests/test_research.py",
       "sha256": "422697faf421e467d203bbed3862987428de9909a4c996cd81cd5271f9d4e7c6"
+    },
+    {
+      "bytes": 458,
+      "path": "tests/test_worker_sql.py",
+      "sha256": "fef18474ee9eb5d6b5602f21fe7fa122b9a58ff5c29e21643861bee57e7b21db"
     }
   ],
   "package": "alpaca-buy-the-dip-timing-lab",
-  "version": "1.0.1"
+  "version": "1.0.2"
 }
