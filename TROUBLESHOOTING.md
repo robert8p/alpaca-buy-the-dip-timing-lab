@@ -175,3 +175,17 @@ Render background workers require a paid instance type. The Blueprint requests S
 ## Run-size guard triggered
 
 Manual runs are limited to 100 predeclared symbols and 200,000 symbol × calendar-day combinations. Candidate CSVs are limited to 100,000 rows. These guards prevent accidental multi-million-row jobs and oversized in-memory exports. Reduce the universe or date range without changing the hypothesis after viewing results.
+
+## Render error: `uvicorn app.main:app ...: not found`
+
+This was caused by the v1.0.0 Blueprint wrapping the Uvicorn command in nested shell quotes. Render then interpreted the entire Uvicorn command as one executable name.
+
+Use v1.0.1 or later. The corrected package removes the web `dockerCommand` and launches `scripts/start_web.sh` through the Dockerfile `CMD`.
+
+For an immediate repair to an already-created v1.0.0 web service, open **Settings → Docker Command**, replace the existing value with:
+
+```text
+python -m uvicorn app.main:app --host 0.0.0.0 --port 10000
+```
+
+Save the change and select **Manual Deploy → Deploy latest commit**. Render's default web-service port is 10000.

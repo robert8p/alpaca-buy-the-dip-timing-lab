@@ -1,4 +1,4 @@
-Alpaca Buy-the-Dip Timing Lab v1.0.0
+Alpaca Buy-the-Dip Timing Lab v1.0.1
 Validation date: 2026-08-02
 ============================================================
 

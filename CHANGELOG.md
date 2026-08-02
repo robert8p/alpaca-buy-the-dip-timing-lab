@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — Render startup fix
+
+- Removed the quoted web `dockerCommand` from `render.yaml`.
+- Added `scripts/start_web.sh` to expand Render's `PORT` safely.
+- Configured the Docker image to start the web service through its own `CMD`.
+- Avoids Render interpreting the complete Uvicorn command as one executable name.
+
 ## 1.0.0 — 2026-08-02
 
 - Separate FastAPI web service and resumable Render background worker.

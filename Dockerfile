@@ -1,8 +1,15 @@
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
-RUN pytest -q
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
+RUN chmod +x /app/scripts/start_web.sh \
+    && pytest -q
+
+CMD ["/app/scripts/start_web.sh"]
