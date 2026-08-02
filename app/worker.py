@@ -169,34 +169,82 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
     if missing:
         raise RuntimeError("live_signal_alerts is missing required columns: " + ", ".join(missing))
 
-    # Candidate availability must be known before the research cutoff. This prevents
-    # a 17:00 London alert generated at 13:00 ET during DST mismatch weeks from being
-    # used to simulate a 12:31 ET purchase.
-    availability_columns = [
-        name for name in ("cutoff_at", "decision_at", "created_at") if name in columns
+    # Candidate availability must be known before the research cutoff. The live
+    # scanner's original schema records the alert persistence time in
+    # first_alerted_at and the scheduled/logical scan time in
+    # live_scan_jobs.cutoff_at. For live rows, use the latest available audit
+    # timestamp. For historical calibration rows, use only logical scan-time
+    # fields so a backfill's current insert time does not invalidate the
+    # historical candidate.
+    alert_availability_columns = [
+        name
+        for name in ("cutoff_at", "decision_at", "created_at", "first_alerted_at")
+        if name in columns
     ]
-    if not availability_columns:
+
+    job_join = ""
+    job_availability_key: str | None = None
+    if "job_id" in columns:
+        job_exists = fetch_one("select to_regclass('public.live_scan_jobs') as table_name")
+        if job_exists and job_exists["table_name"]:
+            job_columns = {
+                row["column_name"]
+                for row in fetch_all(
+                    """
+                    select column_name from information_schema.columns
+                    where table_schema='public' and table_name='live_scan_jobs'
+                    """
+                )
+            }
+            if {"id", "cutoff_at"}.issubset(job_columns):
+                job_join = "left join public.live_scan_jobs as j on j.id = a.job_id"
+                job_availability_key = "job_cutoff_at"
+
+    availability_keys = list(alert_availability_columns)
+    if job_availability_key:
+        availability_keys.append(job_availability_key)
+    if not availability_keys:
         raise RuntimeError(
-            "live_signal_alerts has no auditable cutoff/decision/created timestamp; "
-            "scanner-alert candidates are disabled to prevent look-ahead bias"
+            "live_signal_alerts has no auditable first_alerted/cutoff/decision/created timestamp "
+            "and no compatible live_scan_jobs.cutoff_at; scanner-alert candidates are disabled "
+            "to prevent look-ahead bias"
         )
-    availability_projection = ",\n               ".join(
-        f"{name} as availability_{name}" for name in availability_columns
+
+    availability_projection_parts = [
+        f"a.{name} as availability_{name}" for name in alert_availability_columns
+    ]
+    if job_availability_key:
+        availability_projection_parts.append(
+            "j.cutoff_at as availability_job_cutoff_at"
+        )
+    availability_projection = ",\n               ".join(availability_projection_parts)
+
+    decision_projection = (
+        "a.decision::text as source_decision"
+        if "decision" in columns
+        else "null::text as source_decision"
     )
-    decision_projection = "decision::text as source_decision" if "decision" in columns else "null::text as source_decision"
-    decision_filter = "and decision is distinct from 'reject'" if "decision" in columns else ""
-    security_filter = "and security_eligible is distinct from false" if "security_eligible" in columns else ""
+    decision_filter = (
+        "and a.decision is distinct from 'reject'" if "decision" in columns else ""
+    )
+    security_filter = (
+        "and a.security_eligible is distinct from false"
+        if "security_eligible" in columns
+        else ""
+    )
     alerts = fetch_all(
         f"""
-        select id::text as source_alert_id, trade_date, upper(symbol) as symbol,
+        select a.id::text as source_alert_id, a.trade_date,
+               upper(a.symbol) as symbol,
                {decision_projection},
                {availability_projection}
-        from public.live_signal_alerts
-        where trade_date between %s and %s
-          and scan_type = 'midday'
+        from public.live_signal_alerts as a
+        {job_join}
+        where a.trade_date between %s and %s
+          and a.scan_type = 'midday'
           {decision_filter}
           {security_filter}
-        order by trade_date, symbol
+        order by a.trade_date, a.symbol
         """,
         (run["start_date"], run["end_date"]),
     )
@@ -207,9 +255,13 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
         research_cutoff = _cutoff_for(row["trade_date"], run["cutoff_et"])
         is_calibration = str(row.get("source_decision") or "").lower() == "calibration"
         if is_calibration:
-            logical_names = [name for name in availability_columns if name != "created_at"]
+            logical_keys = [
+                name
+                for name in availability_keys
+                if name not in {"created_at", "first_alerted_at"}
+            ]
             available_at = latest_candidate_availability(
-                [row.get(f"availability_{name}") for name in logical_names],
+                [row.get(f"availability_{name}") for name in logical_keys],
                 row["trade_date"],
             )
             if available_at is None:
@@ -217,7 +269,7 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
             source = "live_signal_alerts_midday_calibration"
         else:
             available_at = latest_candidate_availability(
-                [row.get(f"availability_{name}") for name in availability_columns],
+                [row.get(f"availability_{name}") for name in availability_keys],
                 row["trade_date"],
             )
             source = "live_signal_alerts_midday"

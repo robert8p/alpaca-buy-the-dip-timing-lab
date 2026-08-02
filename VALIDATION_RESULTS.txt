@@ -1,4 +1,4 @@
-Alpaca Buy-the-Dip Timing Lab v1.0.2
+Alpaca Buy-the-Dip Timing Lab v1.0.3
 Validation date: 2026-08-02
 ============================================================
 
@@ -8,7 +8,7 @@ NOT YET END-TO-END PROVEN against the user's live Supabase and Alpaca accounts.
 
 AUTOMATED TESTS
 Command: pytest -q
-Result: 24 passed
+Result: 25 passed
 
 The test suite covers:
 - exact requested one-minute entry rather than forward-filling a missing minute;

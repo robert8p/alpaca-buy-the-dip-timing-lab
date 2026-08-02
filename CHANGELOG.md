@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.3 — Live-scanner schema compatibility fix
+
+- Added support for the original scanner audit field `live_signal_alerts.first_alerted_at`.
+- Joins `live_scan_jobs.cutoff_at` through `job_id` as the authoritative logical scan cutoff.
+- Uses the latest actual audit timestamp for live alerts, preventing late-created rows from being simulated earlier.
+- Uses logical job cutoff rather than backfill insertion time for rows explicitly marked `decision='calibration'`.
+- Preserves the UK/US daylight-saving look-ahead guard.
+- No Supabase schema migration is required.
+
 ## 1.0.2 — PostgreSQL stale-recovery fix
 
 - Qualified `retry_count` and `last_error` with the `dip_candidates` target alias in the `UPDATE ... FROM` stale-work recovery query.
