@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.0.3 — Live-scanner schema compatibility fix
+## 1.0.4 — Historical calibration job-source compatibility
+
+- Recognises historical scanner calibration rows from `live_scan_jobs.source` and explicit calibration parameters, not only `live_signal_alerts.decision`.
+- Uses the linked job's logical `cutoff_at` for those rows while continuing to reject genuinely late live alerts.
+- Adds regression coverage for the calibration-source metadata path.
+
+
+## 1.0.4 — Live-scanner schema compatibility fix
 
 - Added support for the original scanner audit field `live_signal_alerts.first_alerted_at`.
 - Joins `live_scan_jobs.cutoff_at` through `job_id` as the authoritative logical scan cutoff.

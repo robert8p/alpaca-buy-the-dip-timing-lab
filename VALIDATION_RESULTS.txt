@@ -1,4 +1,4 @@
-Alpaca Buy-the-Dip Timing Lab v1.0.3
+Alpaca Buy-the-Dip Timing Lab v1.0.4
 Validation date: 2026-08-02
 ============================================================
 
@@ -79,3 +79,7 @@ DEPLOYMENT ACCEPTANCE TEST STILL REQUIRED
 4. Run the documented three-symbol proof job.
 5. Confirm real dip_candidates, dip_trials and dip_metrics rows are produced.
 6. Only then queue the full historical run.
+
+V1.0.4 REGRESSION
+- Historical calibration job-source metadata is recognised without trusting current insert timestamps.
+- Live rows still use the latest auditable availability timestamp.

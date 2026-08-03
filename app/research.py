@@ -35,6 +35,35 @@ def latest_candidate_availability(values: Iterable[Any], trade_date: date) -> da
     return max(available) if available else None
 
 
+
+def job_marks_historical_calibration(row: dict[str, Any]) -> bool:
+    """Return True only when scanner metadata explicitly marks a historical calibration job."""
+    decision = str(row.get("source_decision") or "").strip().lower()
+    if decision == "calibration":
+        return True
+
+    job_source = str(row.get("job_source") or "").strip().lower()
+    if "calibrat" in job_source:
+        return True
+
+    parameters = row.get("job_parameters")
+    if isinstance(parameters, str):
+        try:
+            parameters = json.loads(parameters)
+        except Exception:
+            parameters = {}
+    if not isinstance(parameters, dict):
+        parameters = {}
+
+    for key in ("calibration_request_id", "calibration_id", "is_calibration", "calibration"):
+        value = parameters.get(key)
+        if value not in (None, False, "", 0, "0", "false", "False"):
+            return True
+    for key in ("mode", "source", "job_type", "request_type"):
+        if "calibrat" in str(parameters.get(key) or "").lower():
+            return True
+    return False
+
 def scheduled_midday_scanner_cutoff(trade_date: date) -> datetime:
     """Convert the scanner's frozen 17:00 Europe/London cutoff into New York time."""
     london_cutoff = datetime.combine(trade_date, time(17, 0), tzinfo=LONDON)

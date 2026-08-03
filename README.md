@@ -1,4 +1,4 @@
-# Alpaca Buy-the-Dip Timing Lab v1.0.3
+# Alpaca Buy-the-Dip Timing Lab v1.0.4
 
 A deployable research application that tests **when an intraday stock dip becomes executable**.
 

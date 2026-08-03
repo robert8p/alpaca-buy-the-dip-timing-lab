@@ -54,7 +54,7 @@ Recovery:
 
 ## Scanner-alert mode says no auditable timestamp exists
 
-Upgrade to v1.0.3. The original live-scanner schema stores actual alert availability in `live_signal_alerts.first_alerted_at` and logical scan time in `live_scan_jobs.cutoff_at`; v1.0.3 supports both.
+Upgrade to v1.0.4. The original live-scanner schema stores actual alert availability in `live_signal_alerts.first_alerted_at` and logical scan time in `live_scan_jobs.cutoff_at`; v1.0.4 supports both.
 
 If the error remains, verify that `live_signal_alerts.job_id` points to `live_scan_jobs.id`, or use Manual symbols / candidate CSV. Do not remove the guard: it prevents look-ahead bias, including UK–US daylight-saving mismatch weeks.
 

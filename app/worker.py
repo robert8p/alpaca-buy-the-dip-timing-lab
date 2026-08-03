@@ -27,6 +27,7 @@ from .research import (
     passes_dip_gate,
     performance_metrics,
     latest_candidate_availability,
+    job_marks_historical_calibration,
     scheduled_midday_scanner_cutoff,
     segment_matches,
     select_validation_record,
@@ -184,6 +185,8 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
 
     job_join = ""
     job_availability_key: str | None = None
+    job_source_projection = "null::text as job_source"
+    job_parameters_projection = "'{}'::jsonb as job_parameters"
     if "job_id" in columns:
         job_exists = fetch_one("select to_regclass('public.live_scan_jobs') as table_name")
         if job_exists and job_exists["table_name"]:
@@ -199,6 +202,21 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
             if {"id", "cutoff_at"}.issubset(job_columns):
                 job_join = "left join public.live_scan_jobs as j on j.id = a.job_id"
                 job_availability_key = "job_cutoff_at"
+                job_source_projection = (
+                    "j.source::text as job_source" if "source" in job_columns else "null::text as job_source"
+                )
+                job_parameters_projection = (
+                    "j.parameters as job_parameters" if "parameters" in job_columns else "'{}'::jsonb as job_parameters"
+                )
+            else:
+                job_source_projection = "null::text as job_source"
+                job_parameters_projection = "'{}'::jsonb as job_parameters"
+        else:
+            job_source_projection = "null::text as job_source"
+            job_parameters_projection = "'{}'::jsonb as job_parameters"
+    else:
+        job_source_projection = "null::text as job_source"
+        job_parameters_projection = "'{}'::jsonb as job_parameters"
 
     availability_keys = list(alert_availability_columns)
     if job_availability_key:
@@ -237,6 +255,8 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
         select a.id::text as source_alert_id, a.trade_date,
                upper(a.symbol) as symbol,
                {decision_projection},
+               {job_source_projection},
+               {job_parameters_projection},
                {availability_projection}
         from public.live_signal_alerts as a
         {job_join}
@@ -253,7 +273,7 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
     duplicates = 0
     for row in alerts:
         research_cutoff = _cutoff_for(row["trade_date"], run["cutoff_et"])
-        is_calibration = str(row.get("source_decision") or "").lower() == "calibration"
+        is_calibration = job_marks_historical_calibration(row)
         if is_calibration:
             logical_keys = [
                 name
