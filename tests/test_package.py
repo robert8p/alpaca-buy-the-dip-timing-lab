@@ -18,3 +18,9 @@ def test_app_has_no_order_endpoints():
     text = "\n".join(p.read_text() for p in root.glob("*.py"))
     assert "/v2/orders" not in text
     assert "submit_order" not in text
+
+
+def test_web_container_starts_uvicorn_without_shell_script_dependency():
+    text = (Path(__file__).parents[1] / "Dockerfile").read_text()
+    assert 'CMD ["python", "-m", "uvicorn"' in text
+    assert 'CMD ["/app/scripts/start_web.sh"]' not in text

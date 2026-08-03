@@ -49,7 +49,7 @@ def main() -> int:
         print(result.stderr, file=sys.stderr)
         return result.returncode
 
-    print(json.dumps({"status": "ok", "version": "2.0.1", "services": len(services), "templates": len(list((ROOT / 'app/templates').glob('*.html')))}, indent=2))
+    print(json.dumps({"status": "ok", "version": "2.0.2", "services": len(services), "templates": len(list((ROOT / 'app/templates').glob('*.html')))}, indent=2))
     return 0
 
 

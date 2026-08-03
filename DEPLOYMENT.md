@@ -6,7 +6,7 @@ This version replaces the web and worker code of the existing Buy-the-Dip Timing
 
 The v2.0.0 ZIP did not contain `tests/test_worker_sql.py` or `tests/test_config.py`. GitHub web uploads replace matching files but do not delete files that are absent from the upload, so the v1 copies remained in the repository and were executed by Docker.
 
-For v2.0.1, upload **all files**, including the complete `tests` folder. Confirm that GitHub shows these four test files before redeploying:
+For v2.0.2, upload **all files**, including the complete `tests` folder. Confirm that GitHub shows these four test files before redeploying:
 
 ```text
 tests/test_config.py
@@ -19,7 +19,7 @@ No Supabase migration or environment-variable change is required for this patch.
 
 ## 1. Download and extract
 
-Extract `alpaca_dip_reversal_trigger_lab_v2.0.1.zip`.
+Extract `alpaca_dip_reversal_trigger_lab_v2.0.2.zip`.
 
 The files inside the extracted folder—not the outer folder itself—must sit at the root of the GitHub repository.
 
@@ -61,7 +61,7 @@ Every column should show a table name, not `null`.
 ## 3. Replace the GitHub files
 
 1. Open the existing timing-lab GitHub repository.
-2. Upload everything inside the extracted v2.0.1 folder.
+2. Upload everything inside the extracted v2.0.2 folder.
 3. Replace existing files.
 4. Commit:
 
@@ -126,7 +126,7 @@ https://YOUR-WEB-SERVICE.onrender.com/health
 ```json
 {
   "status": "ok",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "app": "alpaca-dip-reversal-trigger-lab",
   "trading_enabled": false
 }
@@ -186,3 +186,12 @@ Do not widen the dates merely because the verdict is negative.
 ## 9. Export
 
 Open the completed run and select **Download export**. Upload the ZIP back into ChatGPT for interpretation.
+
+
+## v2.0.2 web startup
+
+The Dockerfile launches Uvicorn directly. In the Render web service, the Docker Command field should normally be blank so Render uses the Dockerfile `CMD`. If an old override remains from an earlier version, either clear it or set it exactly to:
+
+```text
+python -m uvicorn app.main:app --host 0.0.0.0 --port 10000
+```
