@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from dataclasses import dataclass
@@ -28,6 +29,119 @@ TRIGGER_RECIPES: dict[str, str] = {
 }
 
 SEGMENTS = ("all", "price_2_to_5", "price_5_to_20", "price_20_to_50")
+
+
+CONFIRMATION_INITIAL_SESSIONS = 30
+CONFIRMATION_MAX_SESSIONS = 90
+# Backwards-compatible aliases used by existing v2.1 deployments/tests.
+FORWARD_INITIAL_SESSIONS = CONFIRMATION_INITIAL_SESSIONS
+FORWARD_MAX_SESSIONS = CONFIRMATION_MAX_SESSIONS
+
+
+def _serialise_frozen_value(value: Any) -> Any:
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    return value
+
+
+def legacy_frozen_config_payload(run: dict[str, Any], recipe: str, segment: str) -> dict[str, Any]:
+    """v2.1 canonical payload, retained so existing forward runs remain resumable."""
+    keys = (
+        "source_mode", "symbols", "scanner_scan_types", "search_start_et", "search_end_et",
+        "target_net_pct", "target_gross_pct", "stop_loss_pct", "cost_bps",
+        "min_price", "max_price", "min_dollar_volume", "min_drawdown_high_pct",
+        "min_drawdown_open_pct", "min_below_vwap_pct", "oversold_memory_minutes",
+        "volume_climax_ratio", "min_history_bars",
+    )
+    payload: dict[str, Any] = {"winner_recipe": recipe, "winner_segment": segment}
+    for key in keys:
+        payload[key] = _serialise_frozen_value(run.get(key))
+    return payload
+
+
+def frozen_config_payload(run: dict[str, Any], recipe: str, segment: str) -> dict[str, Any]:
+    """Canonical immutable rule and confirmation-protocol definition.
+
+    The 30-to-90 horizon may change only through the authorised extension route, so
+    target-session count is deliberately excluded. Mode, anchor, scope and parent are
+    included to prevent a historical test being relabelled as a forward test (or vice versa).
+    """
+    payload = legacy_frozen_config_payload(run, recipe, segment)
+    for key in ("run_mode", "parent_run_id", "confirmation_anchor_date", "backtest_scope"):
+        payload[key] = _serialise_frozen_value(run.get(key))
+    return payload
+
+
+def frozen_config_sha256(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def evaluate_confirmation_gate(metrics: dict[str, Any], target_sessions: int, run_mode: str) -> tuple[str, bool, dict[str, Any]]:
+    """Evaluate one frozen rule without re-selection.
+
+    Historical sealed backtests and true-forward sealed tests use the same economic
+    gates but produce distinct verdicts so their evidential meaning cannot be confused.
+    """
+    if run_mode not in {"forward_sealed", "historical_sealed"}:
+        raise ValueError("Confirmation run mode must be forward_sealed or historical_sealed")
+    observations = int(metrics.get("observations") or 0)
+    dates = int(metrics.get("independent_dates") or 0)
+    symbols = int(metrics.get("symbols") or 0)
+    target_rate = float(metrics.get("net_target_success_rate_pct") or 0)
+    mean_return = float(metrics.get("mean_net_return_pct") or 0)
+    median_return = float(metrics.get("median_net_return_pct") or 0)
+    profit_factor = float(metrics.get("profit_factor") or 0)
+    loss_rate = float(metrics.get("loss_5pct_rate_pct") or 0)
+    best_symbol_share = metrics.get("best_symbol_profit_share")
+    best_date_share = metrics.get("best_date_profit_share")
+
+    if target_sessions <= CONFIRMATION_INITIAL_SESSIONS:
+        requirements = {
+            "minimum_observations": observations >= 5,
+            "minimum_dates": dates >= 5,
+            "minimum_symbols": symbols >= 5,
+            "target_success_at_least_75pct": target_rate >= 75.0,
+            "positive_mean": mean_return > 0,
+            "positive_median": median_return > 0,
+            "profit_factor_at_least_1_5": profit_factor >= 1.5,
+            "loss_5pct_rate_at_most_25pct": loss_rate <= 25.0,
+            "symbol_concentration_at_most_40pct": best_symbol_share is None or float(best_symbol_share) <= 0.40,
+            "date_concentration_at_most_40pct": best_date_share is None or float(best_date_share) <= 0.40,
+        }
+        enough_signals = observations >= 5 and dates >= 5 and symbols >= 5
+        passed = all(requirements.values())
+        prefix = "forward" if run_mode == "forward_sealed" else "backtest"
+        verdict = (
+            f"{prefix}_30_pass_extension_available" if passed
+            else f"{prefix}_30_inconclusive" if not enough_signals
+            else f"{prefix}_30_fail"
+        )
+    else:
+        requirements = {
+            "minimum_observations": observations >= 12,
+            "minimum_dates": dates >= 10,
+            "minimum_symbols": symbols >= 10,
+            "target_success_at_least_70pct": target_rate >= 70.0,
+            "mean_net_return_at_least_0_5pct": mean_return >= 0.50,
+            "positive_median": median_return > 0,
+            "profit_factor_at_least_1_5": profit_factor >= 1.5,
+            "loss_5pct_rate_at_most_25pct": loss_rate <= 25.0,
+            "symbol_concentration_at_most_30pct": best_symbol_share is None or float(best_symbol_share) <= 0.30,
+            "date_concentration_at_most_30pct": best_date_share is None or float(best_date_share) <= 0.30,
+        }
+        enough_signals = observations >= 12 and dates >= 10 and symbols >= 10
+        passed = all(requirements.values())
+        if run_mode == "forward_sealed":
+            verdict = "forward_90_pass_for_paper_testing" if passed else ("forward_90_inconclusive" if not enough_signals else "forward_90_fail")
+        else:
+            verdict = "backtest_90_pass_for_forward_testing" if passed else ("backtest_90_inconclusive" if not enough_signals else "backtest_90_fail")
+    return verdict, passed, {"requirements": requirements, "target_sessions": target_sessions, "run_mode": run_mode}
+
+
+def evaluate_forward_gate(metrics: dict[str, Any], target_sessions: int) -> tuple[str, bool, dict[str, Any]]:
+    """Backwards-compatible wrapper for v2.1 callers/tests."""
+    return evaluate_confirmation_gate(metrics, target_sessions, "forward_sealed")
 
 
 def normalise_candidate_availability(value: Any, trade_date: date) -> datetime | None:

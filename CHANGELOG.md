@@ -1,35 +1,19 @@
 # Changelog
 
-## 2.0.3
+## 2.2.0
 
-- Fixed export ZIP generation for native PostgreSQL UUID and TIME values.
-- Added regression coverage for completed-run export serialization.
-- Excludes sealed-candidate issues until the sealed test is explicitly opened.
+- Added a distinct `historical_sealed` run mode.
+- Added proper non-overlapping historical 30-session backtests.
+- Added unchanged extension from 30 to 90 total historical sessions.
+- Retained true-forward 30 → 90 testing as a separate evidence type.
+- Added end-to-end and frozen-parent-universe historical scopes.
+- Added generic confirmation fields and a v2.2 Supabase migration.
+- Added immutable anchor, mode, scope and parent fields to the configuration hash.
+- Retained compatibility with v2.1 frozen hashes and routes.
+- Added separate historical and forward verdict names.
+- Added historical export sealing and UI controls.
+- Expanded automated validation to 43 tests.
 
-## 2.0.3
+## 2.1.0
 
-- Replaced the web startup shell script with a direct Docker exec-form Uvicorn command.
-- Removes dependence on Git executable-bit preservation for `scripts/start_web.sh`.
-- Prevents silent container startup failure after a successful Render build.
-
-
-## 2.0.3
-
-- Restored v1 scanner-schema compatibility assertions in the v2 package so GitHub uploads overwrite stale `tests/test_worker_sql.py` files.
-- Retained and explicitly tested `first_alerted_at`, `live_scan_jobs.cutoff_at`, and calibration-job metadata handling.
-- Added conditional recovery for stale v1 timing-lab runs when legacy `dip_*` tables coexist with v2.
-- Kept v2 `dip_trigger_*` stale-work recovery fully qualified.
-
-## 2.0.0
-
-- Replaced fixed-time optimisation with state-based dip-reversal trigger discovery.
-- Added nine pre-registered oversold/exhaustion/reversal recipes.
-- Added SPY-relative-strength features.
-- Added point-in-time oversold memory and volume-climax logic.
-- Added exact next-minute entries and first-trigger-only sampling.
-- Added date, symbol and chronological-fold consistency metrics.
-- Added concentration controls for best stock and best date.
-- Required discovery support before validation can select a recipe.
-- Added exceptional small-sample classification for a frozen sealed test only.
-- Added isolated `dip_trigger_*` tables so v1 timing results remain untouched.
-- Retained no-trading architecture and conservative path simulation.
+- Added staged true-forward 30 → 90-session testing.

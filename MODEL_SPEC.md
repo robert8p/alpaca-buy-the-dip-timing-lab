@@ -1,113 +1,110 @@
-# Model specification
+# Model and confirmation specification — v2.2.0
 
-## Research question
+## Objective
 
-Identify a reproducible sequence:
+Identify temporary intraday oversold dislocations where selling exhaustion and reversal confirmation leave enough remaining upside to exceed a 3% net target after realistic costs.
 
-**oversold state → selling exhaustion → reversal confirmation → next-bar entry → sufficient remaining upside**
+## Frozen trigger
 
-The goal is not to buy all declines. It is to distinguish a temporary dislocation from continuing deterioration.
+A confirmation child evaluates exactly one recipe and one price segment selected before the child is created. The rule’s:
 
-## Candidate populations
+- candidate protocol;
+- symbols or scanner populations;
+- search window;
+- oversold thresholds;
+- volume threshold;
+- target, stop and cost assumptions;
+- recipe and price segment
 
-The app can use:
+are immutable and hashed.
 
-- `pre_open` scanner alerts;
-- `midday` scanner alerts;
-- both populations together, deduplicated by symbol and date;
-- manual symbols;
-- a candidate CSV with an optional point-in-time availability field.
+## Historical sealed backtest
 
-Scanner alerts are candidate generators only. The app independently verifies whether the stock actually becomes oversold.
+A historical child must:
 
-## Point-in-time oversold state
+- end strictly before the parent discovery run begins;
+- have no overlapping sessions with the parent;
+- use 30 completed US trading sessions initially;
+- expose no interim outcomes;
+- perform no trigger selection;
+- retain the original 30 when extended to 90 total sessions.
 
-Default thresholds:
+### End-to-end scope
 
-- price between US$2 and US$50;
-- cumulative dollar volume of at least US$5 million by the trigger;
-- at least 5% below the session high;
-- at least 2% below the session open;
-- at least 1% below cumulative VWAP;
-- oversold state remains eligible for 15 minutes after it occurred;
-- at least 30 completed one-minute bars before a trigger can fire.
+Uses the parent candidate source unchanged. Scanner-based tests require historical scanner alerts with auditable point-in-time availability.
 
-All features at bar `t` use only bar `t` and earlier data. Entry occurs at the open of bar `t+1`, and only if that exact next minute exists.
+### Frozen-parent-universe scope
 
-## Trigger recipes
+Uses the distinct parent candidate symbols as an immutable universe. This isolates trigger performance but does not validate historical scanner selection.
 
-1. `deep_higher_low` — deep washout, then first higher-low green bar.
-2. `deep_prior_high_break` — deep washout, then close above prior-bar high.
-3. `deep_two_green` — deep washout, then two rising green closes.
-4. `capitulation_higher_low` — recent volume climax, volume contraction, then higher low.
-5. `capitulation_prior_high` — recent volume climax, volume contraction, then prior-high break.
-6. `momentum_turn_higher_low` — three-minute downside momentum improves by at least one percentage point, then higher low.
-7. `relative_strength_turn` — stock recovers short-term relative strength versus SPY and breaks the prior bar high.
-8. `vwap_reclaim_after_deep` — deep washout followed by a VWAP reclaim.
-9. `five_bar_break_after_deep` — deep washout followed by a close above the previous five-bar high.
+## True-forward sealed test
 
-Only the first occurrence of each recipe per symbol-date is tested. This prevents repeated entries from one noisy path inflating the sample.
+A forward child must:
 
-## Outcome simulation
+- begin strictly after the parent discovery end date;
+- wait for genuinely later completed sessions;
+- use the first 30 sessions from its anchor;
+- reveal no partial results;
+- retain those 30 when extended to the first 90 total sessions.
 
-Default economics:
+## Execution model
 
-- net target: 3.0%;
-- gross target: 3.5%;
-- stop: 5.0%;
-- costs: 15, 20 and 50 bps;
-- exit: target, stop or official session close.
+- Features use only completed bars available at trigger time.
+- Entry is the next exact one-minute bar.
+- A missing next-minute bar blocks the trade.
+- Same-bar target and stop is treated as stop-first.
+- Gap-through stops exit at the worse opening price.
+- Selection and gates use the highest configured cost assumption.
 
-Conservative path rules:
+## Thirty-session gate
 
-- exact next-bar open is the entry;
-- if target and stop are both inside one minute bar, stop is assumed first;
-- a gap below the stop exits at the lower opening price;
-- an incomplete final path is not used for a market-close outcome.
+All must pass:
 
-## Chronological splits
-
-- discovery: first 60% of independent dates;
-- validation: next 20%;
-- sealed test: final 20%.
-
-The sealed split is not downloaded or processed until a validation-qualified rule is frozen.
-
-## Material consistency
-
-Strong evidence requires, at the highest configured cost:
-
-- at least 100 observations;
-- at least 20 independent dates;
-- at least 20 symbols;
-- mean net return at least 0.75%;
-- median net return at least 0.25%;
-- positive lower bootstrap confidence bound;
-- net-target success at least 40%;
-- Wilson lower bound at least 30%;
-- at least 60% positive dates;
-- at least 55% positive symbols;
-- every chronological fold positive;
+- at least 5 signals;
+- at least 5 dates;
+- at least 5 symbols;
+- at least 75% net-target-before-stop success;
+- positive mean and median net return;
 - profit factor at least 1.5;
-- no more than 25% of observations losing at least 5%;
-- limited best-stock and best-date concentration;
-- multiple-testing-adjusted q-value no more than 0.05.
+- 5% loss rate no greater than 25%;
+- no symbol or date contributes more than 40% of positive profit.
 
-Before validation can select a recipe, the matching discovery recipe and price segment must also show positive, diversified and fold-stable performance.
+## Ninety-session gate
 
-## Exceptional small-sample policy
+All must pass:
 
-A small sample is labelled compelling only when it is unusually strong:
+- at least 12 signals;
+- at least 10 dates;
+- at least 10 symbols;
+- at least 70% target success;
+- mean net return at least 0.5%;
+- positive median return;
+- profit factor at least 1.5;
+- 5% loss rate no greater than 25%;
+- no symbol or date contributes more than 30% of positive profit.
 
-- at least 12 observations, 3 dates and 5 symbols;
-- mean net return at least 1.5%;
-- median at least 0.75%;
-- at least 50% achieve the net target;
-- every validation date positive;
-- at least 70% of symbols positive;
-- every fold averages at least 0.5%;
-- profit factor at least 2.0;
-- limited concentration;
-- q-value no more than 0.25.
+## Verdict hierarchy
 
-This label only permits a frozen sealed test on the already-held-out dates. It does not justify extending the date window or deploying capital.
+Historical:
+
+```text
+backtest_30_pass_extension_available
+backtest_30_fail
+backtest_30_inconclusive
+backtest_90_pass_for_forward_testing
+backtest_90_fail
+backtest_90_inconclusive
+```
+
+Forward:
+
+```text
+forward_30_pass_extension_available
+forward_30_fail
+forward_30_inconclusive
+forward_90_pass_for_paper_testing
+forward_90_fail
+forward_90_inconclusive
+```
+
+Historical success is not forward success. Only a 90-session true-forward pass supports paper testing.

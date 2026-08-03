@@ -17,16 +17,25 @@ from .config import settings
 from .db import connection, execute, execute_many, fetch_all, fetch_one
 from .research import (
     NY,
+    CONFIRMATION_INITIAL_SESSIONS,
+    CONFIRMATION_MAX_SESSIONS,
+    FORWARD_INITIAL_SESSIONS,
+    FORWARD_MAX_SESSIONS,
     SEGMENTS,
     TRIGGER_RECIPES,
     assign_chronological_splits,
     bars_to_frame,
     benjamini_hochberg,
     find_trigger_event,
+    frozen_config_payload,
+    legacy_frozen_config_payload,
+    frozen_config_sha256,
     job_marks_historical_calibration,
     latest_candidate_availability,
     materially_consistent,
     compelling_small_sample,
+    evaluate_confirmation_gate,
+    evaluate_forward_gate,
     performance_metrics,
     scheduled_scanner_cutoff,
     segment_matches,
@@ -308,6 +317,12 @@ def _sync_calendar(run: dict[str, Any], sessions: dict[date, tuple[datetime, dat
 
 
 def _assign_splits(run: dict[str, Any]) -> None:
+    if run.get("run_mode") in {"forward_sealed", "historical_sealed"}:
+        execute(
+            "update public.dip_trigger_candidates set split='sealed_test' where run_id=%s",
+            (run["id"],),
+        )
+        return
     rows = fetch_all("select distinct trade_date from public.dip_trigger_candidates where run_id=%s order by trade_date", (run["id"],))
     mapping = assign_chronological_splits([row["trade_date"] for row in rows], float(run["discovery_ratio"]), float(run["validation_ratio"]))
     execute_many("update public.dip_trigger_candidates set split=%s where run_id=%s and trade_date=%s", [(split, run["id"], trade_date) for trade_date, split in mapping.items()])
@@ -528,6 +543,9 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
     selection_cost = max(costs)
     frame = _trial_frame(str(run["id"]), bool(run.get("sealed_opened")))
 
+    if run.get("run_mode") in {"forward_sealed", "historical_sealed"}:
+        return _compute_confirmation_metrics(run, frame, selection_cost)
+
     if run.get("sealed_opened"):
         winner = run.get("winner_recipe")
         segment = str(run.get("winner_segment") or "all")
@@ -624,19 +642,183 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
     return winner_key, winner_segment, verdict, result
 
 
+def _confirmation_target_sessions(run: dict[str, Any]) -> int:
+    return int(run.get("confirmation_target_sessions") or run.get("forward_target_sessions") or CONFIRMATION_INITIAL_SESSIONS)
+
+
+def _confirmation_anchor(run: dict[str, Any]) -> date:
+    value = run.get("confirmation_anchor_date")
+    if isinstance(value, date):
+        return value
+    if value:
+        return date.fromisoformat(str(value))
+    return run["start_date"] if run.get("run_mode") == "forward_sealed" else run["end_date"]
+
+
+def _verify_frozen_confirmation(run: dict[str, Any], recipe: str, segment: str) -> None:
+    stored = str(run.get("frozen_config_sha256") or "")
+    current = frozen_config_sha256(frozen_config_payload(run, recipe, segment))
+    legacy = frozen_config_sha256(legacy_frozen_config_payload(run, recipe, segment))
+    if stored not in {current, legacy}:
+        raise RuntimeError("Frozen confirmation configuration integrity check failed")  # v2.1 wording: Frozen forward configuration integrity check failed
+
+
+async def _resolve_calendar_for_run(run: dict[str, Any], alpaca: AlpacaClient) -> list[dict[str, Any]] | None:
+    mode = str(run.get("run_mode") or "discovery")
+    if mode not in {"forward_sealed", "historical_sealed"}:
+        return await alpaca.calendar(run["start_date"], run["end_date"])
+
+    target_sessions = _confirmation_target_sessions(run)
+    if target_sessions not in {CONFIRMATION_INITIAL_SESSIONS, CONFIRMATION_MAX_SESSIONS}:
+        raise RuntimeError("Confirmation target sessions must be 30 or 90")
+    recipe = str(run.get("winner_recipe") or "")
+    segment = str(run.get("winner_segment") or "")
+    if not recipe or not segment:
+        raise RuntimeError("Confirmation run is missing its frozen recipe or segment")
+    _verify_frozen_confirmation(run, recipe, segment)
+    anchor = _confirmation_anchor(run)
+
+    if mode == "forward_sealed":
+        today_et = datetime.now(NY).date()
+        completed_through = today_et - timedelta(days=1)
+        probe_end = min(anchor + timedelta(days=target_sessions * 2 + 45), completed_through)
+        calendar: list[dict[str, Any]] = []
+        if probe_end >= anchor:
+            calendar = await alpaca.calendar(anchor, probe_end)
+        eligible = sorted(
+            [row for row in calendar if anchor <= date.fromisoformat(str(row["date"])) < today_et],
+            key=lambda row: str(row["date"]),
+        )
+        if len(eligible) < target_sessions:
+            available = len(eligible)
+            latest = date.fromisoformat(str(eligible[-1]["date"])) if eligible else anchor
+            execute(
+                """
+                update public.dip_trigger_runs
+                set status='completed_with_warnings',stage='forward_window_waiting_for_data',
+                    verdict='forward_window_incomplete',start_date=%s,end_date=%s,completed_at=now(),heartbeat_at=now(),
+                    result_json=coalesce(result_json,'{}'::jsonb) || jsonb_build_object(
+                      'confirmation_target_sessions',%s,'completed_sessions_available',%s,
+                      'sessions_still_required',%s,'latest_completed_session',%s,
+                      'confirmation_window_complete',false
+                    )
+                where id=%s
+                """,
+                (anchor, latest, target_sessions, available, target_sessions - available, latest.isoformat(), run["id"]),
+            )
+            return None
+        selected = eligible[:target_sessions]
+    else:
+        parent = fetch_one("select start_date from public.dip_trigger_runs where id=%s", (run.get("parent_run_id"),))
+        if not parent:
+            raise RuntimeError("Historical confirmation parent run is missing")
+        parent_start = parent["start_date"]
+        if anchor >= parent_start:
+            raise RuntimeError("Historical sealed window overlaps the discovery period")
+        probe_start = anchor - timedelta(days=target_sessions * 3 + 60)
+        calendar = await alpaca.calendar(probe_start, anchor)
+        eligible = sorted(
+            [row for row in calendar if date.fromisoformat(str(row["date"])) <= anchor and date.fromisoformat(str(row["date"])) < parent_start],
+            key=lambda row: str(row["date"]),
+        )
+        if len(eligible) < target_sessions:
+            available = len(eligible)
+            execute(
+                """
+                update public.dip_trigger_runs
+                set status='completed_with_warnings',stage='historical_window_insufficient',
+                    verdict='backtest_window_insufficient',completed_at=now(),heartbeat_at=now(),
+                    result_json=coalesce(result_json,'{}'::jsonb) || jsonb_build_object(
+                      'confirmation_target_sessions',%s,'historical_sessions_available',%s,
+                      'sessions_still_required',%s,'confirmation_window_complete',false
+                    )
+                where id=%s
+                """,
+                (target_sessions, available, target_sessions - available, run["id"]),
+            )
+            return None
+        # The initial test is the 30 sessions immediately preceding the chosen anchor.
+        # Extending to 90 adds the preceding 60 while preserving those original 30.
+        selected = eligible[-target_sessions:]
+
+    actual_start = date.fromisoformat(str(selected[0]["date"]))
+    actual_end = date.fromisoformat(str(selected[-1]["date"]))
+    prefix = "forward" if mode == "forward_sealed" else "backtest"
+    stage = f"{prefix}_{target_sessions}_processing"
+    execute(
+        """
+        update public.dip_trigger_runs
+        set start_date=%s,end_date=%s,confirmation_stage=%s,forward_stage=%s,
+            result_json=coalesce(result_json,'{}'::jsonb) || jsonb_build_object(
+              'confirmation_target_sessions',%s,'confirmation_start_date',%s,'confirmation_end_date',%s,
+              'confirmation_window_complete',true,'confirmation_mode',%s
+            )
+        where id=%s
+        """,
+        (actual_start, actual_end, stage, stage, target_sessions, actual_start.isoformat(), actual_end.isoformat(), mode, run["id"]),
+    )
+    run["start_date"] = actual_start
+    run["end_date"] = actual_end
+    run["confirmation_stage"] = stage
+    return selected
+
+
+def _compute_confirmation_metrics(run: dict[str, Any], frame: pd.DataFrame, selection_cost: int) -> tuple[str, str, str, dict[str, Any]]:
+    winner = str(run.get("winner_recipe") or "")
+    segment = str(run.get("winner_segment") or "all")
+    execute("delete from public.dip_trigger_metrics where run_id=%s and split='sealed_test'", (run["id"],))
+    frozen = _segment_frame(frame[(frame["split"] == "sealed_test") & (frame["recipe_key"] == winner)], segment) if not frame.empty else frame
+    metrics = performance_metrics(frozen, selection_cost, settings.bootstrap_iterations, float(run["target_net_pct"])) if not frozen.empty else {"observations": 0}
+    p_value = float(metrics.get("bootstrap_p_one_sided") if metrics.get("bootstrap_p_one_sided") is not None else 1.0)
+    _write_metric(str(run["id"]), "sealed_test", segment, selection_cost, winner, metrics, p_value, p_value)
+    target_sessions = _confirmation_target_sessions(run)
+    mode = str(run.get("run_mode"))
+    verdict, passed, gate = evaluate_confirmation_gate(metrics, target_sessions, mode)
+    result = dict(run.get("result_json") or {})
+    policy = (
+        "True-forward evidence: all sessions occur strictly after the parent research period."
+        if mode == "forward_sealed"
+        else "Historical sealed evidence: an earlier non-overlapping block tests the frozen rule without re-selection."
+    )
+    result.update({
+        "selection_cost_bps": selection_cost,
+        "confirmation_target_sessions": target_sessions,
+        "confirmation_metrics": metrics,
+        "confirmation_gate": gate,
+        "confirmation_gate_passed": passed,
+        "forward_target_sessions": target_sessions if mode == "forward_sealed" else None,
+        "forward_metrics": metrics if mode == "forward_sealed" else None,
+        "forward_gate": gate if mode == "forward_sealed" else None,
+        "frozen_recipe": winner,
+        "frozen_segment": segment,
+        "backtest_scope": run.get("backtest_scope"),
+        "policy": policy + " No recipe, segment, threshold or cost optimisation occurs.",
+    })
+    return winner, segment, verdict, result
+
+
+# Backwards-compatible name retained for older imports.
+def _compute_forward_metrics(run: dict[str, Any], frame: pd.DataFrame, selection_cost: int) -> tuple[str, str, str, dict[str, Any]]:
+    return _compute_confirmation_metrics(run, frame, selection_cost)
+
+
 async def process_run(run: dict[str, Any], alpaca: AlpacaClient) -> None:
     run_id = str(run["id"])
     logger.info("Processing trigger run %s (%s)", run_id, run["name"])
     try:
         _heartbeat(run_id, "loading_market_calendar")
-        calendar = await alpaca.calendar(run["start_date"], run["end_date"])
+        calendar = await _resolve_calendar_for_run(run, alpaca)
+        if calendar is None:
+            _update_runtime("idle")
+            return
         sessions = _calendar_sessions(calendar)
         if not sessions:
             raise RuntimeError("Alpaca returned no market sessions")
 
         _heartbeat(run_id, "generating_candidates")
         count = fetch_one("select count(*) as n from public.dip_trigger_candidates where run_id=%s", (run_id,)) or {"n": 0}
-        if int(count["n"]) == 0:
+        should_generate = run.get("run_mode") in {"forward_sealed", "historical_sealed"} or int(count["n"]) == 0
+        if should_generate:
             if run["source_mode"] == "scanner_alerts":
                 _scanner_alert_candidates(run)
             elif run["source_mode"] == "manual_symbols":
@@ -671,7 +853,13 @@ async def process_run(run: dict[str, Any], alpaca: AlpacaClient) -> None:
         _refresh_counts(run_id)
         failed = fetch_one("select count(*) as n from public.dip_trigger_candidates where run_id=%s and status='failed'", (run_id,)) or {"n": 0}
         status = "completed_with_warnings" if int(failed["n"]) else "completed"
-        stage = "completed_sealed_test" if run.get("sealed_opened") else ("awaiting_sealed_test" if winner else "completed_no_consistent_trigger")
+        if run.get("run_mode") in {"forward_sealed", "historical_sealed"}:
+            prefix = "forward" if run.get("run_mode") == "forward_sealed" else "backtest"
+            target = _confirmation_target_sessions(run)
+            pass_verdict = f"{prefix}_30_pass_extension_available"
+            stage = f"{prefix}_30_complete_extension_available" if verdict == pass_verdict else f"{prefix}_{target}_complete"
+        else:
+            stage = "completed_sealed_test" if run.get("sealed_opened") else ("awaiting_sealed_test" if winner else "completed_no_consistent_trigger")
         execute(
             """
             update public.dip_trigger_runs

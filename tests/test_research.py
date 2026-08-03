@@ -229,3 +229,85 @@ def test_compelling_small_sample_requires_exceptional_consistency():
     assert compelling_small_sample(metrics, 0.20)
     metrics["positive_date_rate_pct"] = 75
     assert not compelling_small_sample(metrics, 0.20)
+
+
+def test_frozen_forward_configuration_hash_is_stable_and_sensitive():
+    from app.research import frozen_config_payload, frozen_config_sha256
+    run = {
+        "source_mode": "scanner_alerts", "symbols": [], "scanner_scan_types": ["midday"],
+        "search_start_et": time(9, 45), "search_end_et": time(15, 15),
+        "target_net_pct": 3.0, "target_gross_pct": 3.5, "stop_loss_pct": 5.0,
+        "cost_bps": [50], "min_price": 2.0, "max_price": 50.0,
+        "min_dollar_volume": 5_000_000, "min_drawdown_high_pct": 5.0,
+        "min_drawdown_open_pct": 2.0, "min_below_vwap_pct": 1.0,
+        "oversold_memory_minutes": 15, "volume_climax_ratio": 2.5, "min_history_bars": 30,
+    }
+    payload = frozen_config_payload(run, "capitulation_prior_high", "price_5_to_20")
+    first = frozen_config_sha256(payload)
+    second = frozen_config_sha256(dict(reversed(list(payload.items()))))
+    assert first == second
+    changed = dict(payload)
+    changed["volume_climax_ratio"] = 2.6
+    assert frozen_config_sha256(changed) != first
+
+
+def test_forward_30_gate_passes_only_diversified_frozen_evidence():
+    from app.research import evaluate_forward_gate
+    metrics = {
+        "observations": 8, "independent_dates": 8, "symbols": 8,
+        "net_target_success_rate_pct": 87.5, "mean_net_return_pct": 2.0,
+        "median_net_return_pct": 3.0, "profit_factor": 4.0,
+        "loss_5pct_rate_pct": 12.5, "best_symbol_profit_share": 0.15,
+        "best_date_profit_share": 0.15,
+    }
+    verdict, passed, details = evaluate_forward_gate(metrics, 30)
+    assert passed
+    assert verdict == "forward_30_pass_extension_available"
+    assert all(details["requirements"].values())
+    metrics["symbols"] = 3
+    verdict, passed, _ = evaluate_forward_gate(metrics, 30)
+    assert not passed
+    assert verdict == "forward_30_inconclusive"
+
+
+def test_forward_90_gate_is_stricter_and_leads_only_to_paper_testing():
+    from app.research import evaluate_forward_gate
+    metrics = {
+        "observations": 15, "independent_dates": 12, "symbols": 12,
+        "net_target_success_rate_pct": 73.4, "mean_net_return_pct": 1.1,
+        "median_net_return_pct": 3.0, "profit_factor": 2.0,
+        "loss_5pct_rate_pct": 20.0, "best_symbol_profit_share": 0.20,
+        "best_date_profit_share": 0.20,
+    }
+    verdict, passed, _ = evaluate_forward_gate(metrics, 90)
+    assert passed
+    assert verdict == "forward_90_pass_for_paper_testing"
+
+def test_historical_and_forward_verdicts_are_not_conflated():
+    from app.research import evaluate_confirmation_gate
+    metrics = {
+        "observations": 8, "independent_dates": 8, "symbols": 8,
+        "net_target_success_rate_pct": 87.5, "mean_net_return_pct": 2.0,
+        "median_net_return_pct": 3.0, "profit_factor": 4.0,
+        "loss_5pct_rate_pct": 0.0, "best_symbol_profit_share": 0.2,
+        "best_date_profit_share": 0.2,
+    }
+    backtest_verdict, backtest_passed, _ = evaluate_confirmation_gate(metrics, 30, "historical_sealed")
+    forward_verdict, forward_passed, _ = evaluate_confirmation_gate(metrics, 30, "forward_sealed")
+    assert backtest_passed and forward_passed
+    assert backtest_verdict == "backtest_30_pass_extension_available"
+    assert forward_verdict == "forward_30_pass_extension_available"
+
+
+def test_ninety_session_historical_pass_leads_to_forward_not_paper():
+    from app.research import evaluate_confirmation_gate
+    metrics = {
+        "observations": 20, "independent_dates": 15, "symbols": 15,
+        "net_target_success_rate_pct": 75.0, "mean_net_return_pct": 1.0,
+        "median_net_return_pct": 1.0, "profit_factor": 2.0,
+        "loss_5pct_rate_pct": 10.0, "best_symbol_profit_share": 0.2,
+        "best_date_profit_share": 0.2,
+    }
+    verdict, passed, _ = evaluate_confirmation_gate(metrics, 90, "historical_sealed")
+    assert passed
+    assert verdict == "backtest_90_pass_for_forward_testing"

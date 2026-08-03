@@ -3,12 +3,98 @@
 {% block content %}
 {% if run.status in ['queued','running'] %}<script>setTimeout(function(){window.location.reload();},15000);</script>{% endif %}
 <a class="back" href="/">← Dashboard</a>
-<section class="hero compact"><div><div class="eyebrow">RUN {{ run.id }}</div><h1>{{ run.name }}</h1><p>{{ run.start_date }} to {{ run.end_date }} · {{ run.source_mode }} · search {{ run.search_start_et }}–{{ run.search_end_et }} ET</p></div><div class="verdict card"><small>Current verdict</small><strong>{{ run.verdict or 'pending' }}</strong><span>Winner: {% if run.winner_recipe %}{{ run.winner_segment }} · {{ run.winner_recipe }}{% else %}none{% endif %}</span>{% if not run.winner_recipe and run.result_json and run.result_json.best_validation_recipe_diagnostic_only %}<small>Diagnostic best only: {{ run.result_json.best_validation_segment_diagnostic_only }} · {{ run.result_json.best_validation_recipe_diagnostic_only }}</small>{% endif %}</div></section>
-<div class="progress-card card"><div class="progress-meta"><strong>{{ run.status }}</strong><span>{{ run.stage }}</span><span>{{ run.completed_candidate_count }}/{{ run.candidate_count }} candidates</span></div>{% set pct=(100*run.completed_candidate_count/run.candidate_count) if run.candidate_count else 0 %}<div class="progress"><span style="width:{{ pct }}%"></span></div>{% if run.last_error %}<div class="alert danger">{{ run.last_error }}</div>{% endif %}<div class="actions">{% if run.status in ['queued','running'] %}<form method="post" action="/runs/{{ run.id }}/cancel"><button class="danger-outline">Request cancellation</button></form>{% endif %}{% if run.status in ['failed','cancelled','completed_with_warnings'] %}<form method="post" action="/runs/{{ run.id }}/retry"><button>Retry and resume</button></form>{% endif %}<a class="button ghost-button" href="/runs/{{ run.id }}/export">Download export</a></div></div>
-<div class="grid four stats"><div class="card"><small>Candidates</small><strong>{{ run.candidate_count }}</strong></div><div class="card"><small>Accounted for</small><strong>{{ run.completed_candidate_count }}</strong></div><div class="card"><small>Trigger trials</small><strong>{{ run.trial_count }}</strong></div><div class="card"><small>Issues</small><strong>{{ run.issue_count }}</strong></div></div>
-<section class="card"><div class="section-head"><div><div class="eyebrow">MATERIAL CONSISTENCY</div><h2>Trigger-recipe evidence</h2></div>{% if not run.sealed_opened and run.status == 'completed' and run.winner_recipe %}<form method="post" action="/runs/{{ run.id }}/open-sealed" onsubmit="return confirm('Open the sealed test without changing the selected trigger?');"><button class="warning">Open sealed test</button></form>{% endif %}</div><p class="muted">Clock time is descriptive. Selection prioritises positive medians, date and symbol consistency, all chronological folds, concentration limits and the highest configured cost.</p>
-{% if metrics %}<div class="table-wrap"><table><thead><tr><th>Split</th><th>Segment</th><th>Recipe</th><th>Entry ET</th><th>Cost</th><th>N / dates / symbols</th><th>Mean / median net</th><th>Target</th><th>Positive dates / symbols</th><th>Worst fold</th><th>Profit factor</th><th>95% CI</th><th>q</th></tr></thead><tbody>{% for m in metrics %}<tr class="{% if m.recipe_key == run.winner_recipe and m.segment_key == run.winner_segment %}winner-row{% endif %}"><td><span class="pill split">{{ m.split }}</span></td><td>{{ m.segment_key }}</td><td><strong>{{ m.recipe_key }}</strong><small>{{ recipes.get(m.recipe_key,'') }}</small></td><td>{{ m.metrics_json.median_entry_time_et or '—' }}<small>{{ m.metrics_json.p25_entry_time_et or '—' }}–{{ m.metrics_json.p75_entry_time_et or '—' }}</small></td><td>{{ m.cost_bps }} bps</td><td>{{ m.observations }} / {{ m.independent_dates or 0 }} / {{ m.symbols or 0 }}</td><td>{{ '%.3f'|format(m.mean_net_return_pct or 0) }}% / {{ '%.3f'|format(m.median_net_return_pct or 0) }}%</td><td>{{ '%.1f'|format(m.net_target_success_rate_pct or 0) }}%<small>Wilson {{ '%.1f'|format(m.net_target_wilson_low_pct or 0) }}%</small></td><td>{{ '%.1f'|format(m.positive_date_rate_pct or 0) }}% / {{ '%.1f'|format(m.positive_symbol_rate_pct or 0) }}%</td><td>{{ '%.3f'|format(m.worst_fold_mean_pct or 0) }}%</td><td>{{ '%.2f'|format(m.profit_factor or 0) }}</td><td>{{ '%.3f'|format(m.bootstrap_ci_low_pct or 0) }} to {{ '%.3f'|format(m.bootstrap_ci_high_pct or 0) }}</td><td>{{ '%.4f'|format(m.q_value if m.q_value is not none else 1) }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty">Metrics appear after candidate processing.</div>{% endif %}
-{% if run.result_json and run.result_json.best_validation_metrics_diagnostic_only %}<div class="callout"><strong>Diagnostic best is not a winner.</strong> It is shown only to reveal the least-bad trigger when no recipe passes the material-consistency gate.</div>{% endif %}{% if not run.sealed_opened %}<div class="sealed">🔒 Sealed dates remain unprocessed unless a validation trigger qualifies.</div>{% endif %}</section>
-<div class="grid two"><section class="card"><div class="eyebrow">PIPELINE</div><h2>Candidate status</h2><div class="status-list">{% for row in candidate_statuses %}<div><span>{{ row.status }}</span><strong>{{ row.n }}</strong></div>{% endfor %}</div></section><section class="card"><div class="eyebrow">FROZEN ASSUMPTIONS</div><h2>Run configuration</h2><dl><dt>Recipes</dt><dd>{{ run.trigger_recipes }}</dd><dt>Target / gross / stop</dt><dd>{{ run.target_net_pct }}% / {{ run.target_gross_pct }}% / {{ run.stop_loss_pct }}%</dd><dt>Costs</dt><dd>{{ run.cost_bps }} bps</dd><dt>Oversold state</dt><dd>≥{{ run.min_drawdown_high_pct }}% from high; ≥{{ run.min_drawdown_open_pct }}% below open; ≥{{ run.min_below_vwap_pct }}% below VWAP; memory {{ run.oversold_memory_minutes }}m</dd><dt>Liquidity</dt><dd>US${{ run.min_price }}–{{ run.max_price }}; US${{ run.min_dollar_volume }} dollar volume</dd><dt>Volume climax</dt><dd>{{ run.volume_climax_ratio }}× trailing median</dd></dl></section></div>
+<section class="hero compact">
+  <div><div class="eyebrow">RUN {{ run.id }}</div><h1>{{ run.name }}</h1><p>{{ run.start_date }} to {{ run.end_date }} · {{ run.run_mode or 'discovery' }} · {{ run.source_mode }} · search {{ run.search_start_et }}–{{ run.search_end_et }} ET</p></div>
+  <div class="verdict card"><small>Current verdict</small><strong>{{ run.verdict or 'pending' }}</strong><span>Winner: {% if run.winner_recipe %}{{ run.winner_segment }} · {{ run.winner_recipe }}{% else %}none{% endif %}</span>{% if not run.winner_recipe and run.result_json and run.result_json.best_validation_recipe_diagnostic_only %}<small>Diagnostic best only: {{ run.result_json.best_validation_segment_diagnostic_only }} · {{ run.result_json.best_validation_recipe_diagnostic_only }}</small>{% endif %}</div>
+</section>
+<div class="progress-card card">
+  <div class="progress-meta"><strong>{{ run.status }}</strong><span>{{ run.stage }}</span><span>{% if confirmation_sealed_active %}sealed confirmation in progress{% else %}{{ run.completed_candidate_count }}/{{ run.candidate_count }} candidates{% endif %}</span></div>
+  {% set pct=(100*run.completed_candidate_count/run.candidate_count) if run.candidate_count else 0 %}<div class="progress"><span style="width:{{ pct }}%"></span></div>
+  {% if run.last_error %}<div class="alert danger">{{ run.last_error }}</div>{% endif %}
+  <div class="actions">
+    {% if run.status in ['queued','running'] %}<form method="post" action="/runs/{{ run.id }}/cancel"><button class="danger-outline">Request cancellation</button></form>{% endif %}
+    {% if run.status in ['failed','cancelled','completed_with_warnings'] %}<form method="post" action="/runs/{{ run.id }}/retry"><button>Retry and resume</button></form>{% endif %}
+    {% if not confirmation_sealed_active %}<a class="button ghost-button" href="/runs/{{ run.id }}/export">Download export</a>{% endif %}
+  </div>
+</div>
+<div class="grid four stats">
+  <div class="card"><small>Candidates</small><strong>{{ run.candidate_count if not confirmation_sealed_active else 'sealed' }}</strong></div>
+  <div class="card"><small>Accounted for</small><strong>{{ run.completed_candidate_count if not confirmation_sealed_active else 'sealed' }}</strong></div>
+  <div class="card"><small>Trigger trials</small><strong>{{ run.trial_count if not confirmation_sealed_active else 'sealed' }}</strong></div>
+  <div class="card"><small>Issues</small><strong>{{ run.issue_count if not confirmation_sealed_active else 'sealed' }}</strong></div>
+</div>
+
+{% if run.run_mode in ['forward_sealed','historical_sealed'] %}
+<section class="card">
+  {% if run.run_mode == 'forward_sealed' %}
+    <div class="section-head"><div><div class="eyebrow">TRUE FORWARD PROTOCOL</div><h2>Frozen 30 → 90-session forward confirmation</h2></div></div>
+    <p>Every tested session occurs strictly after the parent discovery period. The app waits for completed sessions and reveals no interim outcomes.</p>
+  {% else %}
+    <div class="section-head"><div><div class="eyebrow">HISTORICAL SEALED PROTOCOL</div><h2>Frozen 30 → 90-session backtest</h2></div></div>
+    <p>The app tests an earlier, non-overlapping historical block and performs no recipe or threshold selection. The original 30 sessions remain part of the 90-session extension.</p>
+  {% endif %}
+  <div class="grid four stats">
+    <div><small>Parent</small><strong>{% if parent %}<a href="/runs/{{ parent.id }}">{{ parent.name }}</a>{% else %}—{% endif %}</strong></div>
+    <div><small>Frozen trigger</small><strong>{{ run.winner_recipe }}</strong></div>
+    <div><small>Frozen segment</small><strong>{{ run.winner_segment }}</strong></div>
+    <div><small>Target horizon</small><strong>{{ confirmation_target_sessions }} sessions</strong></div>
+  </div>
+  {% if run.run_mode == 'historical_sealed' %}<p><strong>Backtest scope:</strong> {{ run.backtest_scope or 'end_to_end' }}. End-to-end preserves the original candidate source; frozen-parent-universe tests the trigger on the parent run’s fixed symbol universe and is weaker evidence.</p>{% endif %}
+  <div class="callout"><strong>Integrity hash:</strong> <code>{{ run.frozen_config_sha256 }}</code><br>No recipe, threshold, cost, price band, search window, anchor or candidate protocol can be changed within this run.</div>
+  <div class="actions">
+    {% if run.verdict in ['forward_30_pass_extension_available','backtest_30_pass_extension_available'] and confirmation_target_sessions == confirmation_initial_sessions %}
+    <form method="post" action="/runs/{{ run.id }}/extend-confirmation" onsubmit="return confirm('Extend the unchanged frozen rule from 30 to 90 total trading sessions?');"><button class="warning">Extend unchanged rule to 90 sessions</button></form>
+    {% endif %}
+    {% if run.verdict == 'forward_window_incomplete' %}<form method="post" action="/runs/{{ run.id }}/recheck-forward"><button>Recheck completed-session availability</button></form>{% endif %}
+  </div>
+  {% if run.result_json and run.result_json.confirmation_gate %}<div class="status-list">{% for label, passed in run.result_json.confirmation_gate.requirements.items() %}<div><span>{{ label }}</span><strong>{{ 'PASS' if passed else 'FAIL' }}</strong></div>{% endfor %}</div>{% endif %}
+</section>
+{% else %}
+<div class="grid two">
+  <section class="card">
+    <div class="eyebrow">HISTORICAL CONFIRMATION</div><h2>Sealed backtest: 30 → 90 sessions</h2>
+    {% if can_create_backtest %}
+      <p>Freeze <strong>{{ run.winner_segment }} · {{ run.winner_recipe }}</strong> and test the 30 US trading sessions ending on or before the selected date, strictly before this discovery run. A pass unlocks 90 total sessions.</p>
+      <form method="post" action="/runs/{{ run.id }}/backtest" class="form-grid" onsubmit="return confirm('Freeze the current winner and create a non-editable historical sealed backtest?');">
+        <label>Last historical date<input type="date" name="end_date" value="{{ default_backtest_end }}" max="{{ default_backtest_end }}" required></label>
+        <label>Backtest scope<select name="backtest_scope"><option value="end_to_end">End-to-end: same candidate source</option><option value="frozen_parent_universe">Trigger-only: frozen parent symbol universe</option></select></label>
+        <div class="span-2 callout"><strong>Preferred:</strong> end-to-end is the proper strategy backtest but requires historical scanner alerts. Frozen-parent-universe remains a valid test of the reversal trigger itself, not of the upstream scanner.</div>
+        <button class="span-2" type="submit">Freeze rule and create 30-session backtest</button>
+      </form>
+    {% elif backtest_child %}
+      <p><a class="button" href="/runs/{{ backtest_child.id }}">Open {{ backtest_child.target_sessions }}-session historical test</a></p>
+    {% else %}<p class="muted">A completed frozen winner is required.</p>{% endif %}
+  </section>
+  <section class="card">
+    <div class="eyebrow">TRUE FORWARD CONFIRMATION</div><h2>Forward sealed test: 30 → 90 sessions</h2>
+    {% if can_create_forward %}
+      <p>Freeze the same rule and evaluate it only on sessions after this discovery run. The worker exposes nothing until all 30 sessions are complete.</p>
+      <form method="post" action="/runs/{{ run.id }}/forward" class="form-grid" onsubmit="return confirm('Freeze the current winner and create a non-editable true-forward test?');">
+        <label class="span-2">First forward date<input type="date" name="start_date" value="{{ default_forward_start }}" min="{{ default_forward_start }}" required></label>
+        <button class="span-2" type="submit">Freeze rule and create 30-session forward test</button>
+      </form>
+    {% elif forward_child %}
+      <p><a class="button" href="/runs/{{ forward_child.id }}">Open {{ forward_child.target_sessions }}-session forward test</a></p>
+    {% else %}<p class="muted">A completed frozen winner is required.</p>{% endif %}
+  </section>
+</div>
+{% endif %}
+
+<section class="card">
+  <div class="section-head"><div><div class="eyebrow">MATERIAL CONSISTENCY</div><h2>Trigger-recipe evidence</h2></div>{% if run.run_mode == 'discovery' and not run.sealed_opened and run.status == 'completed' and run.winner_recipe %}<form method="post" action="/runs/{{ run.id }}/open-sealed" onsubmit="return confirm('Open the discovery run sealed test without changing the selected trigger?');"><button class="warning">Open discovery sealed test</button></form>{% endif %}</div>
+  <p class="muted">Clock time is descriptive. Selection prioritises positive medians, date and symbol consistency, chronological stability, concentration limits and the highest configured cost.</p>
+  {% if confirmation_sealed_active %}<div class="sealed">🔒 Outcomes, signal counts, metrics, issues and exports remain hidden until the full {{ confirmation_target_sessions }}-session window has completed.</div>
+  {% elif metrics %}<div class="table-wrap"><table><thead><tr><th>Split</th><th>Segment</th><th>Recipe</th><th>Entry ET</th><th>Cost</th><th>N / dates / symbols</th><th>Mean / median net</th><th>Target</th><th>Positive dates / symbols</th><th>Worst fold</th><th>Profit factor</th><th>95% CI</th><th>q</th></tr></thead><tbody>{% for m in metrics %}<tr class="{% if m.recipe_key == run.winner_recipe and m.segment_key == run.winner_segment %}winner-row{% endif %}"><td><span class="pill split">{{ m.split }}</span></td><td>{{ m.segment_key }}</td><td><strong>{{ m.recipe_key }}</strong><small>{{ recipes.get(m.recipe_key,'') }}</small></td><td>{{ m.metrics_json.median_entry_time_et or '—' }}<small>{{ m.metrics_json.p25_entry_time_et or '—' }}–{{ m.metrics_json.p75_entry_time_et or '—' }}</small></td><td>{{ m.cost_bps }} bps</td><td>{{ m.observations }} / {{ m.independent_dates or 0 }} / {{ m.symbols or 0 }}</td><td>{{ '%.3f'|format(m.mean_net_return_pct or 0) }}% / {{ '%.3f'|format(m.median_net_return_pct or 0) }}%</td><td>{{ '%.1f'|format(m.net_target_success_rate_pct or 0) }}%<small>Wilson {{ '%.1f'|format(m.net_target_wilson_low_pct or 0) }}%</small></td><td>{{ '%.1f'|format(m.positive_date_rate_pct or 0) }}% / {{ '%.1f'|format(m.positive_symbol_rate_pct or 0) }}%</td><td>{{ '%.3f'|format(m.worst_fold_mean_pct or 0) }}%</td><td>{{ '%.2f'|format(m.profit_factor or 0) }}</td><td>{{ '%.3f'|format(m.bootstrap_ci_low_pct or 0) }} to {{ '%.3f'|format(m.bootstrap_ci_high_pct or 0) }}</td><td>{{ '%.4f'|format(m.q_value if m.q_value is not none else 1) }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="empty">Metrics appear after candidate processing.</div>{% endif %}
+  {% if run.result_json and run.result_json.best_validation_metrics_diagnostic_only %}<div class="callout"><strong>Diagnostic best is not a winner.</strong> It is shown only to reveal the least-bad trigger when no recipe passes the material-consistency gate.</div>{% endif %}
+  {% if run.run_mode == 'discovery' and not run.sealed_opened %}<div class="sealed">🔒 Discovery sealed dates remain unprocessed unless a validation trigger qualifies.</div>{% endif %}
+</section>
+
+{% if not confirmation_sealed_active %}
+<div class="grid two">
+  <section class="card"><div class="eyebrow">PIPELINE</div><h2>Candidate status</h2><div class="status-list">{% for row in candidate_statuses %}<div><span>{{ row.status }}</span><strong>{{ row.n }}</strong></div>{% endfor %}</div></section>
+  <section class="card"><div class="eyebrow">FROZEN ASSUMPTIONS</div><h2>Run configuration</h2><dl><dt>Recipes</dt><dd>{{ run.trigger_recipes }}</dd><dt>Target / gross / stop</dt><dd>{{ run.target_net_pct }}% / {{ run.target_gross_pct }}% / {{ run.stop_loss_pct }}%</dd><dt>Costs</dt><dd>{{ run.cost_bps }} bps</dd><dt>Oversold state</dt><dd>≥{{ run.min_drawdown_high_pct }}% from high; ≥{{ run.min_drawdown_open_pct }}% below open; ≥{{ run.min_below_vwap_pct }}% below VWAP; memory {{ run.oversold_memory_minutes }}m</dd><dt>Liquidity</dt><dd>US${{ run.min_price }}–{{ run.max_price }}; US${{ run.min_dollar_volume }} dollar volume</dd><dt>Volume climax</dt><dd>{{ run.volume_climax_ratio }}× trailing median</dd></dl></section>
+</div>
 <section class="card"><div class="eyebrow">AUDIT TRAIL</div><h2>Latest issues</h2>{% if issues %}<div class="issue-list">{% for issue in issues %}<div class="issue {{ issue.severity }}"><strong>{{ issue.stage }}</strong><span>{{ issue.symbol or '' }} {{ issue.trade_date or '' }}</span><p>{{ issue.message }}</p><small>{{ issue.created_at }}</small></div>{% endfor %}</div>{% else %}<div class="empty">No issues recorded.</div>{% endif %}</section>
+{% endif %}
 {% endblock %}

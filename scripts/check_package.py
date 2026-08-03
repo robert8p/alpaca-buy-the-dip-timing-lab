@@ -16,7 +16,7 @@ def main() -> int:
     required = [
         "Dockerfile", "render.yaml", "requirements.txt", "README.md", "DEPLOYMENT.md",
         "MODEL_SPEC.md", "TROUBLESHOOTING.md", "app/main.py", "app/worker.py",
-        "app/research.py", "supabase/schema.sql", "scripts/start_web.sh",
+        "app/research.py", "supabase/schema.sql", "supabase/migration_v2_1_forward_sealed.sql", "supabase/migration_v2_2_historical_and_forward.sql", "scripts/start_web.sh",
     ]
     missing = [name for name in required if not (ROOT / name).exists()]
     if missing:
@@ -36,6 +36,8 @@ def main() -> int:
     for table in ("dip_trigger_runs", "dip_trigger_candidates", "dip_trigger_trials", "dip_trigger_metrics", "dip_trigger_runtime"):
         assert table in schema
     assert "claim_next_dip_trigger_run" in schema
+    for field in ("run_mode", "parent_run_id", "confirmation_target_sessions", "confirmation_anchor_date", "backtest_scope", "frozen_config_sha256"):
+        assert field in schema
 
     source = "\n".join(path.read_text() for path in (ROOT / "app").glob("*.py"))
     assert "/v2/orders" not in source
@@ -49,7 +51,7 @@ def main() -> int:
         print(result.stderr, file=sys.stderr)
         return result.returncode
 
-    print(json.dumps({"status": "ok", "version": "2.0.3", "services": len(services), "templates": len(list((ROOT / 'app/templates').glob('*.html')))}, indent=2))
+    print(json.dumps({"status": "ok", "version": "2.2.0", "services": len(services), "templates": len(list((ROOT / 'app/templates').glob('*.html')))}, indent=2))
     return 0
 
 

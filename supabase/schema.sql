@@ -1,4 +1,4 @@
--- Alpaca Dip-Reversal Trigger Discovery Lab v2.0.3
+-- Alpaca Dip-Reversal Trigger Discovery Lab v2.2.0
 -- Additive schema. Safe to run in the existing scanner Supabase project.
 
 begin;
@@ -7,6 +7,18 @@ create extension if not exists pgcrypto;
 create table if not exists public.dip_trigger_runs (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  run_mode text not null default 'discovery',
+  parent_run_id uuid,
+  forward_target_sessions integer,
+  forward_max_sessions integer,
+  forward_stage text,
+  confirmation_target_sessions integer,
+  confirmation_max_sessions integer,
+  confirmation_stage text,
+  confirmation_anchor_date date,
+  backtest_scope text,
+  frozen_config jsonb,
+  frozen_config_sha256 text,
   source_mode text not null check (source_mode in ('scanner_alerts','manual_symbols','candidate_csv')),
   start_date date not null,
   end_date date not null,
@@ -50,8 +62,54 @@ create table if not exists public.dip_trigger_runs (
   last_error text,
   check (end_date >= start_date),
   check (search_end_et > search_start_et),
-  check (discovery_ratio + validation_ratio < 1)
+  check (discovery_ratio + validation_ratio < 1),
+  check (run_mode='discovery' or (parent_run_id is not null and sealed_opened=true and forward_target_sessions in (30,90) and forward_max_sessions=90 and winner_recipe is not null and winner_segment is not null))
 );
+
+
+-- v2.2.0 additive historical and forward confirmation fields for existing installations.
+alter table public.dip_trigger_runs add column if not exists run_mode text not null default 'discovery';
+alter table public.dip_trigger_runs add column if not exists parent_run_id uuid;
+alter table public.dip_trigger_runs add column if not exists forward_target_sessions integer;
+alter table public.dip_trigger_runs add column if not exists forward_max_sessions integer;
+alter table public.dip_trigger_runs add column if not exists forward_stage text;
+alter table public.dip_trigger_runs add column if not exists confirmation_target_sessions integer;
+alter table public.dip_trigger_runs add column if not exists confirmation_max_sessions integer;
+alter table public.dip_trigger_runs add column if not exists confirmation_stage text;
+alter table public.dip_trigger_runs add column if not exists confirmation_anchor_date date;
+alter table public.dip_trigger_runs add column if not exists backtest_scope text;
+alter table public.dip_trigger_runs add column if not exists frozen_config jsonb;
+alter table public.dip_trigger_runs add column if not exists frozen_config_sha256 text;
+
+update public.dip_trigger_runs
+set confirmation_target_sessions=coalesce(confirmation_target_sessions,forward_target_sessions),
+    confirmation_max_sessions=coalesce(confirmation_max_sessions,forward_max_sessions),
+    confirmation_stage=coalesce(confirmation_stage,forward_stage),
+    confirmation_anchor_date=coalesce(confirmation_anchor_date,case when run_mode='forward_sealed' then start_date else null end)
+where run_mode='forward_sealed';
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname='dip_trigger_runs_parent_run_fk') then
+    alter table public.dip_trigger_runs
+      add constraint dip_trigger_runs_parent_run_fk foreign key (parent_run_id)
+      references public.dip_trigger_runs(id) on delete restrict;
+  end if;
+  if exists (select 1 from pg_constraint where conname='dip_trigger_runs_run_mode_check') then
+    alter table public.dip_trigger_runs drop constraint dip_trigger_runs_run_mode_check;
+  end if;
+  alter table public.dip_trigger_runs
+    add constraint dip_trigger_runs_run_mode_check check (run_mode in ('discovery','forward_sealed','historical_sealed'));
+  if not exists (select 1 from pg_constraint where conname='dip_trigger_runs_confirmation_sessions_check') then
+    alter table public.dip_trigger_runs add constraint dip_trigger_runs_confirmation_sessions_check
+      check (run_mode='discovery' or (confirmation_target_sessions in (30,90) and confirmation_max_sessions=90 and confirmation_anchor_date is not null));
+  end if;
+  if not exists (select 1 from pg_constraint where conname='dip_trigger_runs_backtest_scope_check') then
+    alter table public.dip_trigger_runs add constraint dip_trigger_runs_backtest_scope_check
+      check (backtest_scope is null or backtest_scope in ('end_to_end','frozen_parent_universe'));
+  end if;
+end $$;
+
 create index if not exists dip_trigger_runs_status_idx on public.dip_trigger_runs(status,created_at);
 
 create table if not exists public.dip_trigger_candidates (
@@ -154,7 +212,7 @@ create index if not exists dip_trigger_issues_idx on public.dip_trigger_issues(r
 
 create table if not exists public.dip_trigger_runtime (
   id integer primary key default 1 check (id=1),
-  version text not null default '2.0.3',
+  version text not null default '2.2.0',
   worker_status text not null default 'not_started',
   active_run_id uuid,
   heartbeat_at timestamptz,
@@ -162,7 +220,7 @@ create table if not exists public.dip_trigger_runtime (
   updated_at timestamptz not null default now()
 );
 insert into public.dip_trigger_runtime(id,version,worker_status)
-values (1,'2.0.3','not_started')
+values (1,'2.2.0','not_started')
 on conflict (id) do update set version=excluded.version,updated_at=now();
 
 alter table public.dip_trigger_runs enable row level security;

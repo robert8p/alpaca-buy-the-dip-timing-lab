@@ -1,30 +1,16 @@
-Alpaca Dip-Reversal Trigger Discovery Lab v2.0.3
-Validation date: 2026-08-03
+Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab v2.2.0
 
-PASS: 34 automated tests with the retained v1 compatibility test set
-PASS: the three previously failing v1 compatibility assertions
-PASS: Python AST/compile validation for all application modules
-PASS: 4 Jinja template parses
-PASS: Render Blueprint parse with 2 services (web + worker)
-PASS: isolated additive dip_trigger_* schema and claim function present
-PASS: v2 stale-work SQL explicitly qualifies candidate and run retry_count columns
-PASS: conditional legacy v1 stale-work recovery uses qualified aliases
-PASS: original scanner audit fields first_alerted_at and live_scan_jobs.cutoff_at retained
-PASS: calibration job source and parameters metadata retained
-PASS: no Alpaca account, position or order endpoint present
-PASS: exact next-minute entry test
-PASS: no-trigger-without-oversold-state test
-PASS: same-bar target/stop conservative stop-first test
-PASS: gap-through stop test
-PASS: point-in-time feature test
-PASS: chronological split test
-PASS: floating-point net-target threshold test
-PASS: completed-run ZIP export serializes PostgreSQL UUID, TIME, date, datetime and decimal values
-PASS: small-sample rejection and exceptional-small-sample policy tests
+Validation completed:
+- 43 automated tests passed
+- Python source compilation passed
+- Four Jinja templates parsed successfully
+- Historical and forward run modes remain distinct
+- 30-session and 90-session verdict routing tested
+- Historical and forward export locks tested
+- Legacy v2.1 frozen-hash compatibility retained
+- Exact next-minute execution tests retained
+- Same-bar stop-first and gap-through-stop tests retained
+- Look-ahead and scanner calibration audit tests retained
+- No Alpaca order endpoint is present
 
-Not performed in this environment:
-- Credentialed live connection to the user's Supabase project
-- Credentialed Alpaca historical-data request
-- End-to-end Render deployment
-
-Those are covered by the documented proof run after deployment.
+A credentialed integration test against the user's Supabase and Alpaca accounts was not possible in this build environment. The deployment acceptance test is the first sealed child run after migration.

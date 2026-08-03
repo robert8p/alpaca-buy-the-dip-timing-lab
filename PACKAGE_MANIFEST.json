@@ -1,7 +1,7 @@
 {
-  "name": "Alpaca Dip-Reversal Trigger Discovery Lab",
-  "version": "2.0.3",
-  "file_count": 38,
+  "name": "Alpaca Dip-Reversal Trigger Discovery, Historical Backtest & Forward Confirmation Lab",
+  "version": "2.2.0",
+  "file_count": 40,
   "files": [
     {
       "path": ".dockerignore",
@@ -20,13 +20,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 1693,
-      "sha256": "060186eee9e97864de7b1a072fabcad493f8cdc9f94797d19147906ef79abeda"
+      "bytes": 769,
+      "sha256": "d0787f49bcdecaafda20be43123f4e79dc34130dae144d3ce3d2dbf4f63d4a81"
     },
     {
       "path": "DEPLOYMENT.md",
-      "bytes": 5192,
-      "sha256": "ceb863e5eeb6d2679b48b8c8de075fc9195f6bf94e3203ca93562b70ef3630d8"
+      "bytes": 4357,
+      "sha256": "53e219512d725cca2eec3917e7ec2219f6e021b33273e426b329431ae4afa94b"
     },
     {
       "path": "Dockerfile",
@@ -35,28 +35,28 @@
     },
     {
       "path": "MODEL_SPEC.md",
-      "bytes": 4269,
-      "sha256": "e2c23f222ecf6ed31dcfec3fe98d063343f210eb18144eeb7737d69549d0ea03"
+      "bytes": 3056,
+      "sha256": "feb2b215143ea20139067d417ac9b9b3bbc61067a6e1f6408ca8e4d4fc7f8066"
     },
     {
       "path": "README.md",
-      "bytes": 2697,
-      "sha256": "25beb77e1d75aa8fd376b1dd080838782e5f9b6f69b9db1a67e29f300d5027c6"
+      "bytes": 2100,
+      "sha256": "ebed61cdff76703125ddc4ff77c657b7fbbad1a896948660f4753d2d38b22c75"
     },
     {
       "path": "TROUBLESHOOTING.md",
-      "bytes": 3002,
-      "sha256": "975616ca5e1f2ec8c38c5bd008576cdfcbf34d7192976428f697ba595373c652"
+      "bytes": 1924,
+      "sha256": "692ad15baee91f3c96dfa0a2560514fd4b46e6d1e0ea81f454ad9e4c71e30aa9"
     },
     {
       "path": "VALIDATION_RESULTS.txt",
-      "bytes": 1488,
-      "sha256": "76dcbaba2718fd44606402f0784a126964b8420224a899283db9644a2a83a6e4"
+      "bytes": 791,
+      "sha256": "e03978ffade45b78f38e285a6bed45a50f19185885749c87432135aaf6f808a2"
     },
     {
       "path": "app/__init__.py",
       "bytes": 22,
-      "sha256": "fc610a11ae81623055df849991294047ceda08ce58f46d1a488d0b5cbe768898"
+      "sha256": "0ca93ed5bfab66c245c458b526827b4e612f204434adff82f470195b0be3b8cd"
     },
     {
       "path": "app/alpaca.py",
@@ -80,18 +80,18 @@
     },
     {
       "path": "app/exports.py",
-      "bytes": 3549,
-      "sha256": "0b38a967fd2d7b671a04476fca8003f56a5c03924a8b573665fe235f4b899f1d"
+      "bytes": 4049,
+      "sha256": "6cc31e1800c16f18046f81b8b61a01158ad3e274c2cea5d7c71ff5a5ec7d0291"
     },
     {
       "path": "app/main.py",
-      "bytes": 16270,
-      "sha256": "34a139870ca92e0d7b2d8c83fe4348fd63c14d0eef3f7d3ef2eed65d6465c233"
+      "bytes": 30481,
+      "sha256": "21eecf9559bd3afd85d7be43ef0797602bff563310e219cc3cef7f985fc3b2d9"
     },
     {
       "path": "app/research.py",
-      "bytes": 30654,
-      "sha256": "bf4c4dec158cf09a5542c974942827a934bd8e79da0113cbe631af698aa923b4"
+      "bytes": 36563,
+      "sha256": "958abfb1077714466132f3832aaec6054a2b4e676df9fd2948bd7b3e3ea84401"
     },
     {
       "path": "app/static/styles.css",
@@ -101,12 +101,12 @@
     {
       "path": "app/templates/base.html",
       "bytes": 742,
-      "sha256": "1e304a214566b8fdccc4dfbfaadb885a2124fdd25aeaa303c9e7bae3c9bafa21"
+      "sha256": "0985ca3e352542f3513b9e750216de7f1993211933f3692062f9b59bbea13a9e"
     },
     {
       "path": "app/templates/dashboard.html",
-      "bytes": 6275,
-      "sha256": "7358becb3dd54c738982993a41d15e4c2adf37521fb8a85d6c369174f8e94dbf"
+      "bytes": 6535,
+      "sha256": "65843c17094b3e57f28548a2fea0ca5b6b58a6f357294894df99c3076076a197"
     },
     {
       "path": "app/templates/login.html",
@@ -115,13 +115,13 @@
     },
     {
       "path": "app/templates/run_detail.html",
-      "bytes": 6619,
-      "sha256": "20eda2343e34cd98f82df573200a745889316aca8a7c5b8fa88023eb78784a7c"
+      "bytes": 12879,
+      "sha256": "7dfd6268dfd8b0d1c3fa50d55db96288e9b46a4f30cb9b85f249aae05f2eadec"
     },
     {
       "path": "app/worker.py",
-      "bytes": 38078,
-      "sha256": "81d797c4bd82685273674e6f2eaf218f260df57408ea6c5302a7b3c856faca9c"
+      "bytes": 47956,
+      "sha256": "9718fbacc52d63fde2363c55c3f5b5f4d78d2ba36da778a5612eed758ccecb0c"
     },
     {
       "path": "examples/candidate_dates_template.csv",
@@ -140,8 +140,8 @@
     },
     {
       "path": "scripts/check_package.py",
-      "bytes": 2103,
-      "sha256": "7fcde775ac58768a83456045c0f033016ae72c6e0bbb4c014f2026876273b34b"
+      "bytes": 2384,
+      "sha256": "402f58a1d1bb00b935a9d809101f925db40ca11012ebbd7a780b0881e789acd1"
     },
     {
       "path": "scripts/start_web.sh",
@@ -150,18 +150,28 @@
     },
     {
       "path": "scripts/verify.sql",
-      "bytes": 451,
-      "sha256": "b5d4fad92ce80515881bb3fc86ebac696527ba6db80b3eb78408dfee182cceb5"
+      "bytes": 753,
+      "sha256": "0d4d3baa6bbbeef72e2c898ae224f5bfa94946977c556336fff44e24544d207b"
+    },
+    {
+      "path": "supabase/migration_v2_1_forward_sealed.sql",
+      "bytes": 1398,
+      "sha256": "8636caaf4394c2f5cbfd42593d6f0f7229167008bd24beb91eb161fb0dac08d2"
+    },
+    {
+      "path": "supabase/migration_v2_2_historical_and_forward.sql",
+      "bytes": 2375,
+      "sha256": "f2bacb5a7cced14f3949c67b44e63b848023c4fefa58753271c0b8ed98ef6a54"
     },
     {
       "path": "supabase/migration_v2_trigger_lab.sql",
-      "bytes": 9092,
-      "sha256": "9fa46060a191de18a94134a76b9c21178c5e8174ea49dadc28a6ebdff2216ba9"
+      "bytes": 10783,
+      "sha256": "44355420b36a641e6fb0ad551ddad10ef0ee84d4f4e61242e5e40e2ed1971b45"
     },
     {
       "path": "supabase/schema.sql",
-      "bytes": 9092,
-      "sha256": "9fa46060a191de18a94134a76b9c21178c5e8174ea49dadc28a6ebdff2216ba9"
+      "bytes": 12645,
+      "sha256": "f9ab920cbdf4d093d47c18bd1885cf1a5f9ad956e4e7b77539b4e850b46aae11"
     },
     {
       "path": "tests/conftest.py",
@@ -180,13 +190,13 @@
     },
     {
       "path": "tests/test_package.py",
-      "bytes": 1015,
-      "sha256": "cc569223f1be265e848447e0be68034b9e405ea0fd0508662b1baaaa0bc04bc4"
+      "bytes": 2899,
+      "sha256": "adc59d2ac25f1721c0a4a4497cd4fb35784e13d0963ae2f249cbee93eeed6735"
     },
     {
       "path": "tests/test_research.py",
-      "bytes": 9227,
-      "sha256": "4a210f2e655e1a6f2eec7b370a5afeb476fe802f183f6e5d7aa9d3b785e5c520"
+      "bytes": 13116,
+      "sha256": "8352a1e2702a52439ee743bb1f38547416fa7fb55745ee6fbb0e789b4d6b1c4c"
     },
     {
       "path": "tests/test_worker_sql.py",

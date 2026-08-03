@@ -79,11 +79,17 @@ def build_run_export(run_id: str) -> tuple[str, bytes]:
         (run_id, include_sealed),
     )
     manifest = {
-        "app": "Alpaca Dip-Reversal Trigger Discovery Lab",
+        "app": "Alpaca Dip-Reversal Trigger Discovery, Historical Backtest & Forward Confirmation Lab",
         "run_id": run_id,
+        "run_mode": run.get("run_mode") or "discovery",
+        "parent_run_id": str(run.get("parent_run_id")) if run.get("parent_run_id") else None,
+        "confirmation_target_sessions": run.get("confirmation_target_sessions") or run.get("forward_target_sessions"),
+        "confirmation_anchor_date": run.get("confirmation_anchor_date"),
+        "backtest_scope": run.get("backtest_scope"),
+        "forward_target_sessions": run.get("forward_target_sessions"),
         "sealed_included": include_sealed,
         "counts": {"candidates": len(candidates), "trials": len(trials), "metrics": len(metrics), "issues": len(issues)},
-        "warning": "A positive validation result is not live-trading approval. The app contains no order endpoints.",
+        "warning": "A positive result permits paper testing at most. The app contains no order endpoints.",
     }
     payload = io.BytesIO()
     with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as archive:

@@ -1,72 +1,41 @@
-# Troubleshooting
+# Troubleshooting — v2.2.0
 
-## `relation public.dip_trigger_runtime does not exist`
+## `column ... confirmation_target_sessions does not exist`
 
-Run `supabase/schema.sql` in the same Supabase project referenced by `DATABASE_URL`.
+Run `supabase/migration_v2_2_historical_and_forward.sql` in the same Supabase project referenced by Render’s `DATABASE_URL`, then redeploy.
 
-## Worker starts but no candidates are created
+## Historical run returns no candidates
 
-For scanner mode, confirm the database contains `live_signal_alerts`. Run:
+For `end_to_end` scanner mode, the selected period must contain auditable rows in `live_signal_alerts`. Check:
 
 ```sql
-select scan_type,min(trade_date),max(trade_date),count(*)
+select min(trade_date), max(trade_date), count(distinct trade_date), count(*)
 from public.live_signal_alerts
-group by scan_type;
+where scan_type in ('pre_open','midday');
 ```
 
-For manual mode, confirm symbols were entered.
+If the historical period predates scanner calibration, use `frozen_parent_universe` only when the intention is to test the trigger itself. Do not describe that result as an end-to-end scanner backtest.
 
-## Many scanner alerts are excluded
+## `backtest_window_insufficient`
 
-The app excludes alerts whose auditable availability is after the configured search end. Historical calibration rows are recognised from scanner-job metadata. Exclusion is preferable to look-ahead bias.
+Alpaca returned fewer than the required 30 or 90 sessions ending at the historical anchor. Confirm the anchor date and data coverage. The app will not fabricate or overlap sessions.
 
-## No trigger trials
+## `forward_window_incomplete`
 
-This means candidates did not satisfy both the oversold state and a selected reversal recipe. It is not an application failure. Review `quality_flags` and `issues.csv` before changing any threshold.
+The required later sessions do not exist yet. This is expected for true-forward testing. Use **Recheck completed-session availability** after more US trading sessions have completed.
 
-## `relative_strength_turn` never fires
+## Frozen integrity failure
 
-Check that SPY one-minute bars are available from the configured Alpaca feed. Other recipes continue to run if SPY is unavailable.
+A stored rule, anchor, scope or parent reference differs from the immutable hash. Do not edit confirmation rows manually. Create a new child from the original discovery run.
 
-## Run appears stuck
+## Export returns HTTP 409
 
-Check:
+Confirmation exports remain deliberately locked while the 30- or 90-session window is queued or running.
 
-```sql
-select version,worker_status,active_run_id,heartbeat_at,last_error
-from public.dip_trigger_runtime
-where id=1;
-```
+## Historical 90 extension adds older dates
 
-Then:
+This is intentional. The initial historical test is the 30 sessions immediately preceding the selected end date. Extending to 90 preserves those 30 and adds the preceding 60 sessions.
 
-```sql
-select status,count(*)
-from public.dip_trigger_candidates
-where run_id='YOUR-RUN-ID'
-group by status;
-```
+## Forward 90 extension
 
-If the heartbeat is current, the worker is active. The interface refreshes every 15 seconds.
-
-## A run failed after a Render restart
-
-Deploy the latest commit and use **Retry and resume**. Stale running candidates and runs are requeued with explicit table aliases to avoid the previous PostgreSQL ambiguity bug.
-
-## Negative result
-
-Do not relax thresholds after viewing outcomes and rerun until something wins. That converts research into overfitting. A negative result is the intended stopping condition.
-
-## Docker build fails in `tests/test_worker_sql.py`
-
-Cause: v1 test files remained in GitHub because uploading v2.0.0 did not delete files omitted from the new package. Version 2.0.3 includes replacement compatibility tests and retains the corresponding scanner audit protections. Upload the complete v2.0.3 `tests` directory and redeploy. The expected build result is `32 passed`.
-
-
-## Build passes but the web container exits before Uvicorn logs
-
-Version 2.0.3 starts Uvicorn directly from the Dockerfile and no longer depends on the executable bit of `scripts/start_web.sh`. In Render, clear any stale Docker Command override or set it exactly to `python -m uvicorn app.main:app --host 0.0.0.0 --port 10000`, then redeploy. Also confirm `APP_PASSWORD` is at least 12 characters and `SESSION_SECRET` is at least 32 characters.
-
-
-## Export download returns Internal Server Error
-
-Version 2.0.2 could not JSON-serialize PostgreSQL UUID and TIME values in `run.json`, even though the research run itself completed. Deploy v2.0.3; no schema migration or rerun is required. The existing completed run can then be exported normally.
+The forward extension keeps the first 30 sessions and adds the following 60 sessions, producing the first 90 sessions after the forward anchor.

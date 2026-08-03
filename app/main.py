@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
@@ -19,12 +19,15 @@ from .auth import authenticated, valid_credentials
 from .config import settings
 from .db import connection, execute, fetch_all, fetch_one
 from .exports import build_run_export
-from .research import TRIGGER_RECIPES
+from .research import (
+    CONFIRMATION_INITIAL_SESSIONS, CONFIRMATION_MAX_SESSIONS, FORWARD_INITIAL_SESSIONS, FORWARD_MAX_SESSIONS,
+    TRIGGER_RECIPES, frozen_config_payload, frozen_config_sha256,
+)
 
 NY = ZoneInfo("America/New_York")
 
 settings.validate_web()
-app = FastAPI(title="Alpaca Dip-Reversal Trigger Discovery Lab", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, same_site="lax", https_only=settings.session_cookie_secure)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
@@ -191,6 +194,215 @@ def create_run(
     return RedirectResponse(f"/runs/{row['id']}", status_code=303)
 
 
+def _completed_parent(parent_run_id: str) -> dict:
+    parent = fetch_one("select * from public.dip_trigger_runs where id=%s", (parent_run_id,))
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent run not found")
+    if parent.get("run_mode") in {"forward_sealed", "historical_sealed"}:
+        raise HTTPException(status_code=400, detail="Create confirmation tests from the discovery run, not from another confirmation child")
+    if parent["status"] not in {"completed", "completed_with_warnings"}:
+        raise HTTPException(status_code=400, detail="The parent discovery run must be complete")
+    recipe = str(parent.get("winner_recipe") or "")
+    segment = str(parent.get("winner_segment") or "")
+    if not recipe or recipe not in TRIGGER_RECIPES or not segment:
+        raise HTTPException(status_code=400, detail="Freeze a winner recipe and segment before creating a confirmation test")
+    return parent
+
+
+def _insert_confirmation_child(
+    parent: dict,
+    run_mode: str,
+    anchor_date: date,
+    source_mode: str,
+    symbols: list[str],
+    backtest_scope: str | None,
+) -> str:
+    recipe = str(parent["winner_recipe"])
+    segment = str(parent["winner_segment"])
+    child_config = dict(parent)
+    child_config.update({
+        "run_mode": run_mode,
+        "parent_run_id": parent["id"],
+        "confirmation_anchor_date": anchor_date,
+        "backtest_scope": backtest_scope,
+        "source_mode": source_mode,
+        "symbols": symbols,
+    })
+    frozen = frozen_config_payload(child_config, recipe, segment)
+    digest = frozen_config_sha256(frozen)
+    protocol = "true_forward_30_then_90" if run_mode == "forward_sealed" else "historical_sealed_30_then_90"
+    mode_label = "Forward sealed" if run_mode == "forward_sealed" else "Historical sealed backtest"
+    verdict = "forward_30_queued" if run_mode == "forward_sealed" else "backtest_30_queued"
+    result = {
+        "protocol": protocol,
+        "parent_run_id": str(parent["id"]),
+        "frozen_recipe": recipe,
+        "frozen_segment": segment,
+        "frozen_config_sha256": digest,
+        "initial_sessions": CONFIRMATION_INITIAL_SESSIONS,
+        "maximum_sessions": CONFIRMATION_MAX_SESSIONS,
+        "confirmation_anchor_date": anchor_date.isoformat(),
+        "backtest_scope": backtest_scope,
+        "policy": "One frozen rule. No recipe, segment, threshold, cost or population changes after creation.",
+    }
+    row = fetch_one(
+        """
+        insert into public.dip_trigger_runs(
+          name,run_mode,parent_run_id,confirmation_target_sessions,confirmation_max_sessions,confirmation_stage,
+          confirmation_anchor_date,backtest_scope,forward_target_sessions,forward_max_sessions,forward_stage,
+          frozen_config,frozen_config_sha256,source_mode,start_date,end_date,symbols,scanner_scan_types,
+          search_start_et,search_end_et,trigger_recipes,target_net_pct,target_gross_pct,stop_loss_pct,cost_bps,
+          min_price,max_price,min_dollar_volume,min_drawdown_high_pct,min_drawdown_open_pct,min_below_vwap_pct,
+          oversold_memory_minutes,volume_climax_ratio,min_history_bars,discovery_ratio,validation_ratio,
+          sealed_opened,winner_recipe,winner_segment,verdict,result_json
+        ) values (
+          %s,%s,%s,%s,%s,'initial_30',%s,%s,%s,%s,'initial_30',%s,%s,%s,%s,%s,%s,%s,
+          %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,true,%s,%s,%s,%s
+        ) returning id
+        """,
+        (
+            f"{mode_label} 30-session test · {parent['name']}", run_mode, parent["id"],
+            CONFIRMATION_INITIAL_SESSIONS, CONFIRMATION_MAX_SESSIONS, anchor_date, backtest_scope,
+            CONFIRMATION_INITIAL_SESSIONS, CONFIRMATION_MAX_SESSIONS, Jsonb(frozen), digest,
+            source_mode, anchor_date, anchor_date, Jsonb(symbols), Jsonb(parent.get("scanner_scan_types") or []),
+            parent["search_start_et"], parent["search_end_et"], Jsonb([recipe]), parent["target_net_pct"],
+            parent["target_gross_pct"], parent["stop_loss_pct"], Jsonb(parent.get("cost_bps") or []),
+            parent["min_price"], parent["max_price"], parent["min_dollar_volume"],
+            parent["min_drawdown_high_pct"], parent["min_drawdown_open_pct"], parent["min_below_vwap_pct"],
+            parent["oversold_memory_minutes"], parent["volume_climax_ratio"], parent["min_history_bars"],
+            parent["discovery_ratio"], parent["validation_ratio"], recipe, segment, verdict, Jsonb(result),
+        ),
+    )
+    return str(row["id"])
+
+
+@app.post("/runs/{parent_run_id}/forward")
+def create_forward_run(request: Request, parent_run_id: str, start_date: Annotated[date, Form()]):
+    """Create a true-forward sealed 30-session test strictly after the discovery period."""
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+    parent = _completed_parent(parent_run_id)
+    if parent["source_mode"] not in {"scanner_alerts", "manual_symbols"}:
+        raise HTTPException(status_code=400, detail="Forward continuation requires scanner alerts or a frozen manual symbol universe")
+    if start_date <= parent["end_date"]:
+        raise HTTPException(status_code=400, detail="Forward start must be strictly after the parent run end date")
+    if start_date >= datetime.now(NY).date():
+        raise HTTPException(status_code=400, detail="The first forward date must already have occurred; the app then waits for 30 completed sessions")
+    existing = fetch_one(
+        "select id from public.dip_trigger_runs where parent_run_id=%s and run_mode='forward_sealed' order by created_at desc limit 1",
+        (parent_run_id,),
+    )
+    if existing:
+        return RedirectResponse(f"/runs/{existing['id']}", status_code=303)
+    run_id = _insert_confirmation_child(
+        parent, "forward_sealed", start_date, parent["source_mode"], list(parent.get("symbols") or []), None
+    )
+    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+
+
+@app.post("/runs/{parent_run_id}/backtest")
+def create_historical_backtest(
+    request: Request,
+    parent_run_id: str,
+    end_date: Annotated[date, Form()],
+    backtest_scope: Annotated[str, Form()] = "end_to_end",
+):
+    """Create an earlier, non-overlapping sealed historical 30-session test."""
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+    parent = _completed_parent(parent_run_id)
+    if end_date >= parent["start_date"]:
+        raise HTTPException(status_code=400, detail="Historical backtest must end strictly before the discovery run begins")
+    if end_date >= datetime.now(NY).date():
+        raise HTTPException(status_code=400, detail="Historical backtest dates must be complete")
+    if backtest_scope not in {"end_to_end", "frozen_parent_universe"}:
+        raise HTTPException(status_code=400, detail="Unknown historical backtest scope")
+    existing = fetch_one(
+        "select id from public.dip_trigger_runs where parent_run_id=%s and run_mode='historical_sealed' order by created_at desc limit 1",
+        (parent_run_id,),
+    )
+    if existing:
+        return RedirectResponse(f"/runs/{existing['id']}", status_code=303)
+
+    source_mode = parent["source_mode"]
+    symbols = list(parent.get("symbols") or [])
+    if backtest_scope == "end_to_end":
+        if source_mode not in {"scanner_alerts", "manual_symbols"}:
+            raise HTTPException(status_code=400, detail="End-to-end historical testing requires scanner alerts or a manual-symbol parent")
+    else:
+        rows = fetch_all(
+            "select distinct upper(symbol) as symbol from public.dip_trigger_candidates where run_id=%s order by symbol",
+            (parent_run_id,),
+        )
+        symbols = [str(row["symbol"]) for row in rows]
+        if not symbols:
+            raise HTTPException(status_code=400, detail="The parent run has no candidate symbols to freeze")
+        if len(symbols) > 1000:
+            raise HTTPException(status_code=400, detail="Frozen parent universe exceeds the 1,000-symbol safety limit")
+        source_mode = "manual_symbols"
+
+    run_id = _insert_confirmation_child(parent, "historical_sealed", end_date, source_mode, symbols, backtest_scope)
+    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+
+
+@app.post("/runs/{run_id}/extend-confirmation")
+def extend_confirmation_run(request: Request, run_id: str):
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+    run = fetch_one("select * from public.dip_trigger_runs where id=%s", (run_id,))
+    if not run or run.get("run_mode") not in {"forward_sealed", "historical_sealed"}:
+        raise HTTPException(status_code=404, detail="Sealed confirmation run not found")
+    target = int(run.get("confirmation_target_sessions") or run.get("forward_target_sessions") or 0)
+    if target != CONFIRMATION_INITIAL_SESSIONS:
+        raise HTTPException(status_code=400, detail="This run is already extended")
+    expected = "forward_30_pass_extension_available" if run["run_mode"] == "forward_sealed" else "backtest_30_pass_extension_available"
+    if run.get("verdict") != expected:
+        raise HTTPException(status_code=400, detail="The 30-session gate must pass before extension")
+    prefix = "forward" if run["run_mode"] == "forward_sealed" else "backtest"
+    execute(
+        """
+        update public.dip_trigger_runs
+        set confirmation_target_sessions=%s,forward_target_sessions=%s,confirmation_stage='extension_to_90',
+            forward_stage='extension_to_90',status='queued',stage=%s,verdict=%s,completed_at=null,last_error=null,
+            cancel_requested=false,result_json=coalesce(result_json,'{}'::jsonb) ||
+              jsonb_build_object('extension_authorised_at',now(),'confirmation_target_sessions',%s)
+        where id=%s
+        """,
+        (CONFIRMATION_MAX_SESSIONS, CONFIRMATION_MAX_SESSIONS, f"{prefix}_90_queued", f"{prefix}_90_queued", CONFIRMATION_MAX_SESSIONS, run_id),
+    )
+    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+
+
+# Backwards-compatible v2.1 endpoint.
+@app.post("/runs/{run_id}/extend-forward")
+def extend_forward_run(request: Request, run_id: str):
+    return extend_confirmation_run(request, run_id)
+
+
+@app.post("/runs/{run_id}/recheck-forward")
+def recheck_forward_run(request: Request, run_id: str):
+    redirect = _require_auth(request)
+    if redirect:
+        return redirect
+    run = fetch_one("select * from public.dip_trigger_runs where id=%s", (run_id,))
+    if not run or run.get("run_mode") != "forward_sealed":
+        raise HTTPException(status_code=404, detail="Forward run not found")
+    if run.get("verdict") != "forward_window_incomplete":
+        raise HTTPException(status_code=400, detail="This forward window is not waiting for additional completed sessions")
+    execute(
+        """
+        update public.dip_trigger_runs
+        set status='queued',stage='rechecking_forward_window',completed_at=null,last_error=null,cancel_requested=false
+        where id=%s
+        """,
+        (run_id,),
+    )
+    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+
+
 @app.post("/runs/upload")
 async def upload_candidates(
     request: Request,
@@ -273,7 +485,39 @@ def run_detail(request: Request, run_id: str):
         (run_id, run["sealed_opened"]),
     )
     issues = fetch_all("select * from public.dip_trigger_issues where run_id=%s order by created_at desc limit 100", (run_id,))
-    return templates.TemplateResponse("run_detail.html", {"request": request, "run": run, "candidate_statuses": statuses, "metrics": metrics, "issues": issues, "recipes": TRIGGER_RECIPES})
+    parent = fetch_one("select id,name,start_date,end_date,winner_recipe,winner_segment from public.dip_trigger_runs where id=%s", (run.get("parent_run_id"),)) if run.get("parent_run_id") else None
+    is_confirmation = run.get("run_mode") in {"forward_sealed", "historical_sealed"}
+    forward_child = fetch_one(
+        "select id,status,verdict,coalesce(confirmation_target_sessions,forward_target_sessions) as target_sessions from public.dip_trigger_runs where parent_run_id=%s and run_mode='forward_sealed' order by created_at desc limit 1",
+        (run_id,),
+    ) if not is_confirmation else None
+    backtest_child = fetch_one(
+        "select id,status,verdict,coalesce(confirmation_target_sessions,forward_target_sessions) as target_sessions,backtest_scope from public.dip_trigger_runs where parent_run_id=%s and run_mode='historical_sealed' order by created_at desc limit 1",
+        (run_id,),
+    ) if not is_confirmation else None
+    can_create_confirmation = bool(
+        not is_confirmation
+        and run.get("status") in {"completed", "completed_with_warnings"}
+        and run.get("winner_recipe")
+        and run.get("winner_segment")
+        and run.get("source_mode") in {"scanner_alerts", "manual_symbols"}
+    )
+    target_sessions = int(run.get("confirmation_target_sessions") or run.get("forward_target_sessions") or CONFIRMATION_INITIAL_SESSIONS)
+    confirmation_active = is_confirmation and run.get("status") in {"queued", "running"}
+    return templates.TemplateResponse("run_detail.html", {
+        "request": request, "run": run, "candidate_statuses": statuses, "metrics": metrics,
+        "issues": issues, "recipes": TRIGGER_RECIPES, "parent": parent, "forward_child": forward_child,
+        "backtest_child": backtest_child, "can_create_forward": can_create_confirmation and not forward_child,
+        "can_create_backtest": can_create_confirmation and not backtest_child,
+        "default_forward_start": run["end_date"] + timedelta(days=1),
+        "default_backtest_end": run["start_date"] - timedelta(days=1),
+        "confirmation_initial_sessions": CONFIRMATION_INITIAL_SESSIONS,
+        "confirmation_max_sessions": CONFIRMATION_MAX_SESSIONS,
+        "forward_initial_sessions": FORWARD_INITIAL_SESSIONS, "forward_max_sessions": FORWARD_MAX_SESSIONS,
+        "confirmation_target_sessions": target_sessions,
+        "confirmation_sealed_active": confirmation_active,
+        "forward_sealed_active": confirmation_active,
+    })
 
 
 @app.post("/runs/{run_id}/cancel")
@@ -317,5 +561,12 @@ def export_run(request: Request, run_id: str):
     redirect = _require_auth(request)
     if redirect:
         return redirect
+    run = fetch_one("select run_mode,status,stage from public.dip_trigger_runs where id=%s", (run_id,))
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.get("run_mode") == "forward_sealed" and run.get("status") in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="Forward results remain sealed until the complete target window has finished")
+    if run.get("run_mode") == "historical_sealed" and run.get("status") in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="Historical backtest results remain sealed until the complete target window has finished")
     filename, payload = build_run_export(run_id)
     return Response(content=payload, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
