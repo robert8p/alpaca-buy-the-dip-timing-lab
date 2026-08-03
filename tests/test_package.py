@@ -60,3 +60,12 @@ def test_historical_and_forward_exports_are_locked_while_processing():
     text = (Path(__file__).parents[1] / "app" / "main.py").read_text()
     assert "Forward results remain sealed until the complete target window has finished" in text
     assert "Historical backtest results remain sealed until the complete target window has finished" in text
+
+
+def test_ui_version_is_dynamic_and_matches_runtime_version():
+    root = Path(__file__).parents[1]
+    base = (root / "app" / "templates" / "base.html").read_text()
+    main = (root / "app" / "main.py").read_text()
+    assert "v{{ app_version }}" in base
+    assert 'templates.env.globals["app_version"] = __version__' in main
+    assert "v2.1.0" not in base

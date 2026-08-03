@@ -1,13 +1,10 @@
-# Deployment — v2.2.0
+# Deployment — v2.2.2
 
 ## What this release changes
 
-v2.2.0 separates two different confirmation methods:
+v2.2.2 fixes an HTTP 500 raised when creating a historical or true-forward sealed child run. PostgreSQL returns run IDs as UUID objects; the frozen-rule JSON serializer now converts UUID and other database-native values into canonical JSON before hashing and insertion.
 
-- **Historical sealed backtest:** an earlier non-overlapping 30-session block, extendable to 90 total sessions after a pass.
-- **True-forward sealed test:** sessions strictly after the discovery run, also staged 30 → 90.
-
-A historical result is never described as forward evidence.
+No Supabase migration is required when v2.2.0 or v2.2.1 is already installed. The historical and forward protocols are unchanged.
 
 ## 1. Run the Supabase migration
 
@@ -53,7 +50,7 @@ Five rows should be returned.
 
 ## 2. Update GitHub
 
-1. Extract `alpaca_dip_reversal_trigger_lab_v2.2.0.zip`.
+1. Extract `alpaca_dip_reversal_trigger_lab_v2.2.2.zip`.
 2. Upload everything inside the extracted folder to the existing repository.
 3. Replace existing files.
 4. Ensure this new file exists:
@@ -65,7 +62,7 @@ supabase/migration_v2_2_historical_and_forward.sql
 5. Commit:
 
 ```text
-Add sealed historical and forward 30-to-90 testing
+Fix sealed child-run JSON serialization
 ```
 
 ## 3. Redeploy Render
@@ -82,7 +79,7 @@ No environment-variable changes are required.
 Expected build:
 
 ```text
-43 passed
+45 passed
 ```
 
 Expected health version:
@@ -90,7 +87,7 @@ Expected health version:
 ```json
 {
   "status": "ok",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "trading_enabled": false
 }
 ```

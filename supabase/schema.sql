@@ -1,4 +1,4 @@
--- Alpaca Dip-Reversal Trigger Discovery Lab v2.2.0
+-- Alpaca Dip-Reversal Trigger Discovery Lab v2.2.2
 -- Additive schema. Safe to run in the existing scanner Supabase project.
 
 begin;
@@ -212,7 +212,7 @@ create index if not exists dip_trigger_issues_idx on public.dip_trigger_issues(r
 
 create table if not exists public.dip_trigger_runtime (
   id integer primary key default 1 check (id=1),
-  version text not null default '2.2.0',
+  version text not null default '2.2.2',
   worker_status text not null default 'not_started',
   active_run_id uuid,
   heartbeat_at timestamptz,
@@ -220,7 +220,7 @@ create table if not exists public.dip_trigger_runtime (
   updated_at timestamptz not null default now()
 );
 insert into public.dip_trigger_runtime(id,version,worker_status)
-values (1,'2.2.0','not_started')
+values (1,'2.2.2','not_started')
 on conflict (id) do update set version=excluded.version,updated_at=now();
 
 alter table public.dip_trigger_runs enable row level security;

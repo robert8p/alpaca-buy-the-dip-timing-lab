@@ -1,4 +1,4 @@
-# Troubleshooting — v2.2.0
+# Troubleshooting — v2.2.2
 
 ## `column ... confirmation_target_sessions does not exist`
 
@@ -39,3 +39,9 @@ This is intentional. The initial historical test is the 30 sessions immediately 
 ## Forward 90 extension
 
 The forward extension keeps the first 30 sessions and adds the following 60 sessions, producing the first 90 sessions after the forward anchor.
+
+## Internal Server Error when creating a backtest or forward test
+
+Upgrade to v2.2.2 or later. v2.2.1 could pass a native PostgreSQL UUID into the frozen JSON configuration, causing an unhandled serialization error. No database migration or rerun of the parent discovery analysis is required.
+
+After deployment, return to the completed parent run and create the child again. If an earlier failed click created no child row, the button remains available.

@@ -31,6 +31,7 @@ app = FastAPI(title="Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab", 
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, same_site="lax", https_only=settings.session_cookie_secure)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["app_version"] = __version__
 
 
 def _require_auth(request: Request) -> RedirectResponse | None:

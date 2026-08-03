@@ -1,6 +1,6 @@
 {
   "name": "Alpaca Dip-Reversal Trigger Discovery, Historical Backtest & Forward Confirmation Lab",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "file_count": 40,
   "files": [
     {
@@ -20,13 +20,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 769,
-      "sha256": "d0787f49bcdecaafda20be43123f4e79dc34130dae144d3ce3d2dbf4f63d4a81"
+      "bytes": 1519,
+      "sha256": "300d9cff4b97cd1b55b83b26cc363c270756ae35e569ef32e2420785a93ca4a9"
     },
     {
       "path": "DEPLOYMENT.md",
-      "bytes": 4357,
-      "sha256": "53e219512d725cca2eec3917e7ec2219f6e021b33273e426b329431ae4afa94b"
+      "bytes": 4409,
+      "sha256": "e50060e56476bd77228dbe88d862880a206e483ae1cd829bb148c4f4e9bc1de9"
     },
     {
       "path": "Dockerfile",
@@ -36,27 +36,27 @@
     {
       "path": "MODEL_SPEC.md",
       "bytes": 3056,
-      "sha256": "feb2b215143ea20139067d417ac9b9b3bbc61067a6e1f6408ca8e4d4fc7f8066"
+      "sha256": "b2887b53c81d63fa5ace43c154999548ae15a2c7998d8e4b46b85138de3be433"
     },
     {
       "path": "README.md",
-      "bytes": 2100,
-      "sha256": "ebed61cdff76703125ddc4ff77c657b7fbbad1a896948660f4753d2d38b22c75"
+      "bytes": 2323,
+      "sha256": "f8836a5a0fa4add8dc0d95a8eecf81b347bd276874f041a311195ec288b378c6"
     },
     {
       "path": "TROUBLESHOOTING.md",
-      "bytes": 1924,
-      "sha256": "692ad15baee91f3c96dfa0a2560514fd4b46e6d1e0ea81f454ad9e4c71e30aa9"
+      "bytes": 2379,
+      "sha256": "076010761f6fc0a2f94a8c6a339828e63f74397fb739fa0e6fcc0bf16575e0f0"
     },
     {
       "path": "VALIDATION_RESULTS.txt",
-      "bytes": 791,
-      "sha256": "e03978ffade45b78f38e285a6bed45a50f19185885749c87432135aaf6f808a2"
+      "bytes": 812,
+      "sha256": "4534e34da669534d7871bcffb5d50de0ab8af3c1c06d3bcbc66037b8f4ef8bc8"
     },
     {
       "path": "app/__init__.py",
       "bytes": 22,
-      "sha256": "0ca93ed5bfab66c245c458b526827b4e612f204434adff82f470195b0be3b8cd"
+      "sha256": "b68018cc4fe89354a2044d00a8055d5b43bc6025c2c1cc74c382404d842e24e8"
     },
     {
       "path": "app/alpaca.py",
@@ -85,13 +85,13 @@
     },
     {
       "path": "app/main.py",
-      "bytes": 30481,
-      "sha256": "21eecf9559bd3afd85d7be43ef0797602bff563310e219cc3cef7f985fc3b2d9"
+      "bytes": 30532,
+      "sha256": "0bd52d03fa70c0eb27f5c31221b132c3ce8616667b573eb46829cad1a0960ca8"
     },
     {
       "path": "app/research.py",
-      "bytes": 36563,
-      "sha256": "958abfb1077714466132f3832aaec6054a2b4e676df9fd2948bd7b3e3ea84401"
+      "bytes": 36960,
+      "sha256": "3fa01064877f4b798e7f1e23af18aee16b08a993877d0b32e7e418762367971c"
     },
     {
       "path": "app/static/styles.css",
@@ -100,8 +100,8 @@
     },
     {
       "path": "app/templates/base.html",
-      "bytes": 742,
-      "sha256": "0985ca3e352542f3513b9e750216de7f1993211933f3692062f9b59bbea13a9e"
+      "bytes": 754,
+      "sha256": "ec8d0a5837292ed3d56cd88701d436d0a0eb771cad4a1c6f9b034764a0526e6e"
     },
     {
       "path": "app/templates/dashboard.html",
@@ -141,7 +141,7 @@
     {
       "path": "scripts/check_package.py",
       "bytes": 2384,
-      "sha256": "402f58a1d1bb00b935a9d809101f925db40ca11012ebbd7a780b0881e789acd1"
+      "sha256": "99c3bd056aae4b917121b8674daa3211a957645a889d43dd0eb184d21bea46cc"
     },
     {
       "path": "scripts/start_web.sh",
@@ -171,7 +171,7 @@
     {
       "path": "supabase/schema.sql",
       "bytes": 12645,
-      "sha256": "f9ab920cbdf4d093d47c18bd1885cf1a5f9ad956e4e7b77539b4e850b46aae11"
+      "sha256": "47a8e72ee8cd6399018d64b3b173c3a84e1c8d5e126c5dff78cdc3e0e58f8013"
     },
     {
       "path": "tests/conftest.py",
@@ -190,13 +190,13 @@
     },
     {
       "path": "tests/test_package.py",
-      "bytes": 2899,
-      "sha256": "adc59d2ac25f1721c0a4a4497cd4fb35784e13d0963ae2f249cbee93eeed6735"
+      "bytes": 3260,
+      "sha256": "3df62c1d4e5d9246f768bcd4f57e72b8bed5a5d60d75adef41f2e71a905017ae"
     },
     {
       "path": "tests/test_research.py",
-      "bytes": 13116,
-      "sha256": "8352a1e2702a52439ee743bb1f38547416fa7fb55745ee6fbb0e789b4d6b1c4c"
+      "bytes": 14497,
+      "sha256": "be0a9bb48f2a931e8fe888c5275d52786eb394de07911d6b5fb8ef75496fbeec"
     },
     {
       "path": "tests/test_worker_sql.py",

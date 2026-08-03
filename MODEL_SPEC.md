@@ -1,4 +1,4 @@
-# Model and confirmation specification — v2.2.0
+# Model and confirmation specification — v2.2.2
 
 ## Objective
 

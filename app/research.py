@@ -5,6 +5,8 @@ import json
 import math
 from dataclasses import dataclass
 from datetime import date, datetime, time
+from decimal import Decimal
+from uuid import UUID
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
@@ -41,6 +43,14 @@ FORWARD_MAX_SESSIONS = CONFIRMATION_MAX_SESSIONS
 def _serialise_frozen_value(value: Any) -> Any:
     if isinstance(value, (datetime, date, time)):
         return value.isoformat()
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, dict):
+        return {str(key): _serialise_frozen_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialise_frozen_value(item) for item in value]
     return value
 
 

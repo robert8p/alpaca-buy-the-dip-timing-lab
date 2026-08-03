@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.2
+
+- Fixed sealed historical and forward child-run creation failing with HTTP 500 when PostgreSQL UUID values were embedded in the frozen JSON configuration.
+- Canonical frozen configuration serialization now handles UUID, date, time, datetime, Decimal, lists and nested dictionaries.
+- Added a regression test proving the frozen confirmation payload is standard JSON serialisable before database insertion.
+- No Supabase migration is required.
+
+## 2.2.1
+
+- Fixed the header displaying v2.1.0 while the runtime was v2.2.x.
+- The server-rendered UI now reads the package version dynamically from `app.__version__`.
+- Clarified that historical and forward confirmation controls appear on a completed parent run page, not the new-run dashboard.
+
 ## 2.2.0
 
 - Added a distinct `historical_sealed` run mode.

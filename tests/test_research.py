@@ -1,4 +1,6 @@
 from datetime import date, datetime, time, timedelta
+import json
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -11,6 +13,7 @@ from app.research import (
     benjamini_hochberg,
     enrich_intraday_features,
     find_trigger_event,
+    frozen_config_payload,
     job_marks_historical_calibration,
     materially_consistent,
     performance_metrics,
@@ -311,3 +314,39 @@ def test_ninety_session_historical_pass_leads_to_forward_not_paper():
     verdict, passed, _ = evaluate_confirmation_gate(metrics, 90, "historical_sealed")
     assert passed
     assert verdict == "backtest_90_pass_for_forward_testing"
+
+
+def test_frozen_confirmation_config_is_plain_json_serialisable():
+    parent_id = uuid4()
+    payload = frozen_config_payload(
+        {
+            "run_mode": "historical_sealed",
+            "parent_run_id": parent_id,
+            "confirmation_anchor_date": date(2026, 7, 3),
+            "backtest_scope": "frozen_parent_universe",
+            "source_mode": "manual_symbols",
+            "symbols": ["AAPL", "MSFT"],
+            "scanner_scan_types": ["midday"],
+            "search_start_et": time(9, 45),
+            "search_end_et": time(15, 15),
+            "target_net_pct": 3.0,
+            "target_gross_pct": 3.5,
+            "stop_loss_pct": 5.0,
+            "cost_bps": [50],
+            "min_price": 2.0,
+            "max_price": 50.0,
+            "min_dollar_volume": 5_000_000,
+            "min_drawdown_high_pct": 5.0,
+            "min_drawdown_open_pct": 2.0,
+            "min_below_vwap_pct": 1.0,
+            "oversold_memory_minutes": 15,
+            "volume_climax_ratio": 2.5,
+            "min_history_bars": 30,
+        },
+        "capitulation_prior_high",
+        "price_5_to_20",
+    )
+    encoded = json.dumps(payload, sort_keys=True)
+    assert str(parent_id) in encoded
+    assert payload["confirmation_anchor_date"] == "2026-07-03"
+    assert payload["search_start_et"] == "09:45:00"

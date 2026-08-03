@@ -1,7 +1,7 @@
-Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab v2.2.0
+Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab v2.2.2
 
 Validation completed:
-- 43 automated tests passed
+- 45 automated tests passed
 - Python source compilation passed
 - Four Jinja templates parsed successfully
 - Historical and forward run modes remain distinct
@@ -13,4 +13,4 @@ Validation completed:
 - Look-ahead and scanner calibration audit tests retained
 - No Alpaca order endpoint is present
 
-A credentialed integration test against the user's Supabase and Alpaca accounts was not possible in this build environment. The deployment acceptance test is the first sealed child run after migration.
+A credentialed integration test against the user's Supabase and Alpaca accounts was not possible in this build environment. The deployment acceptance test is successful creation of a historical or forward sealed child run.
