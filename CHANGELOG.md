@@ -1,12 +1,19 @@
 # Changelog
-## 2.0.2
+
+## 2.0.3
+
+- Fixed export ZIP generation for native PostgreSQL UUID and TIME values.
+- Added regression coverage for completed-run export serialization.
+- Excludes sealed-candidate issues until the sealed test is explicitly opened.
+
+## 2.0.3
 
 - Replaced the web startup shell script with a direct Docker exec-form Uvicorn command.
 - Removes dependence on Git executable-bit preservation for `scripts/start_web.sh`.
 - Prevents silent container startup failure after a successful Render build.
 
 
-## 2.0.2
+## 2.0.3
 
 - Restored v1 scanner-schema compatibility assertions in the v2 package so GitHub uploads overwrite stale `tests/test_worker_sql.py` files.
 - Retained and explicitly tested `first_alerted_at`, `live_scan_jobs.cutoff_at`, and calibration-job metadata handling.

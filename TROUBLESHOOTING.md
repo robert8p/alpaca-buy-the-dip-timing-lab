@@ -59,9 +59,14 @@ Do not relax thresholds after viewing outcomes and rerun until something wins. T
 
 ## Docker build fails in `tests/test_worker_sql.py`
 
-Cause: v1 test files remained in GitHub because uploading v2.0.0 did not delete files omitted from the new package. Version 2.0.2 includes replacement compatibility tests and retains the corresponding scanner audit protections. Upload the complete v2.0.2 `tests` directory and redeploy. The expected build result is `32 passed`.
+Cause: v1 test files remained in GitHub because uploading v2.0.0 did not delete files omitted from the new package. Version 2.0.3 includes replacement compatibility tests and retains the corresponding scanner audit protections. Upload the complete v2.0.3 `tests` directory and redeploy. The expected build result is `32 passed`.
 
 
 ## Build passes but the web container exits before Uvicorn logs
 
-Version 2.0.2 starts Uvicorn directly from the Dockerfile and no longer depends on the executable bit of `scripts/start_web.sh`. In Render, clear any stale Docker Command override or set it exactly to `python -m uvicorn app.main:app --host 0.0.0.0 --port 10000`, then redeploy. Also confirm `APP_PASSWORD` is at least 12 characters and `SESSION_SECRET` is at least 32 characters.
+Version 2.0.3 starts Uvicorn directly from the Dockerfile and no longer depends on the executable bit of `scripts/start_web.sh`. In Render, clear any stale Docker Command override or set it exactly to `python -m uvicorn app.main:app --host 0.0.0.0 --port 10000`, then redeploy. Also confirm `APP_PASSWORD` is at least 12 characters and `SESSION_SECRET` is at least 32 characters.
+
+
+## Export download returns Internal Server Error
+
+Version 2.0.2 could not JSON-serialize PostgreSQL UUID and TIME values in `run.json`, even though the research run itself completed. Deploy v2.0.3; no schema migration or rerun is required. The existing completed run can then be exported normally.

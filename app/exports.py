@@ -4,16 +4,21 @@ import csv
 import io
 import json
 import zipfile
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 from .db import fetch_all, fetch_one
 
 
 def _json_default(value: Any):
-    if isinstance(value, (datetime, date)):
+    # psycopg returns native PostgreSQL types. Run rows include UUID and TIME
+    # values, neither of which the standard JSON encoder can serialize.
+    if isinstance(value, (datetime, date, time)):
         return value.isoformat()
+    if isinstance(value, UUID):
+        return str(value)
     if isinstance(value, Decimal):
         return float(value)
     raise TypeError(type(value).__name__)
@@ -63,7 +68,16 @@ def build_run_export(run_id: str) -> tuple[str, bytes]:
         """,
         (run_id, include_sealed),
     )
-    issues = fetch_all("select * from public.dip_trigger_issues where run_id=%s order by created_at", (run_id,))
+    issues = fetch_all(
+        """
+        select i.*
+        from public.dip_trigger_issues i
+        left join public.dip_trigger_candidates c on c.id=i.candidate_id
+        where i.run_id=%s and (%s or c.split is null or c.split <> 'sealed_test')
+        order by i.created_at
+        """,
+        (run_id, include_sealed),
+    )
     manifest = {
         "app": "Alpaca Dip-Reversal Trigger Discovery Lab",
         "run_id": run_id,

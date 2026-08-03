@@ -1,7 +1,7 @@
 {
   "name": "Alpaca Dip-Reversal Trigger Discovery Lab",
-  "version": "2.0.2",
-  "file_count": 41,
+  "version": "2.0.3",
+  "file_count": 38,
   "files": [
     {
       "path": ".dockerignore",
@@ -19,34 +19,14 @@
       "sha256": "ddd417795a21925783da8b9e37b0fac1d670d4bc4e29758664f2286a17f2b8f9"
     },
     {
-      "path": ".pytest_cache/.gitignore",
-      "bytes": 37,
-      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd"
-    },
-    {
-      "path": ".pytest_cache/CACHEDIR.TAG",
-      "bytes": 191,
-      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4"
-    },
-    {
-      "path": ".pytest_cache/README.md",
-      "bytes": 302,
-      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad"
-    },
-    {
-      "path": ".pytest_cache/v/cache/nodeids",
-      "bytes": 2407,
-      "sha256": "afe5f6c16ade41e026103a71a90f5fcc51c47f3ad54bc60a2710eaac6bc151a0"
-    },
-    {
       "path": "CHANGELOG.md",
-      "bytes": 1460,
-      "sha256": "d9fed6d346e7dcaf023520c896ef01f0f8ab4e85ca73e32471aa53fb0e98e256"
+      "bytes": 1693,
+      "sha256": "060186eee9e97864de7b1a072fabcad493f8cdc9f94797d19147906ef79abeda"
     },
     {
       "path": "DEPLOYMENT.md",
       "bytes": 5192,
-      "sha256": "ace6960cf96bfacb6e1c2efe3649f0c7b94929e0f411b200f96a9983808adb80"
+      "sha256": "ceb863e5eeb6d2679b48b8c8de075fc9195f6bf94e3203ca93562b70ef3630d8"
     },
     {
       "path": "Dockerfile",
@@ -61,22 +41,22 @@
     {
       "path": "README.md",
       "bytes": 2697,
-      "sha256": "925ffb650ab1b5d1931e3cca3b5da0ab16e5c3645798f9d5962f67f15cdd057e"
+      "sha256": "25beb77e1d75aa8fd376b1dd080838782e5f9b6f69b9db1a67e29f300d5027c6"
     },
     {
       "path": "TROUBLESHOOTING.md",
-      "bytes": 2702,
-      "sha256": "56c539686cd771c4a601b19f236fe1df5e7af1d9d5737bb16de7391c82b4c2ba"
+      "bytes": 3002,
+      "sha256": "975616ca5e1f2ec8c38c5bd008576cdfcbf34d7192976428f697ba595373c652"
     },
     {
       "path": "VALIDATION_RESULTS.txt",
-      "bytes": 1389,
-      "sha256": "f6ebe33d7fe67a9ba4e2d76a3c4069dd613a45b2bc302177306f9d08bc9bb6fa"
+      "bytes": 1488,
+      "sha256": "76dcbaba2718fd44606402f0784a126964b8420224a899283db9644a2a83a6e4"
     },
     {
       "path": "app/__init__.py",
       "bytes": 22,
-      "sha256": "b404ef24ce6c840cdfb291d88dd570a55db0dfe803035d7d3651188b95f69456"
+      "sha256": "fc610a11ae81623055df849991294047ceda08ce58f46d1a488d0b5cbe768898"
     },
     {
       "path": "app/alpaca.py",
@@ -100,8 +80,8 @@
     },
     {
       "path": "app/exports.py",
-      "bytes": 3086,
-      "sha256": "753aa9a4270c7ead178cd38d886bc5954e050c4db65f15c3f003ef4fd0a323c8"
+      "bytes": 3549,
+      "sha256": "0b38a967fd2d7b671a04476fca8003f56a5c03924a8b573665fe235f4b899f1d"
     },
     {
       "path": "app/main.py",
@@ -121,7 +101,7 @@
     {
       "path": "app/templates/base.html",
       "bytes": 742,
-      "sha256": "051f0ea7456b5d5107d2b3537dc5fab0cc44c3baf01fc6e556009b57df518172"
+      "sha256": "1e304a214566b8fdccc4dfbfaadb885a2124fdd25aeaa303c9e7bae3c9bafa21"
     },
     {
       "path": "app/templates/dashboard.html",
@@ -161,7 +141,7 @@
     {
       "path": "scripts/check_package.py",
       "bytes": 2103,
-      "sha256": "7578f41b465f11b39410aea95a427bf48496718201d90d50fb41a994059a3cf9"
+      "sha256": "7fcde775ac58768a83456045c0f033016ae72c6e0bbb4c014f2026876273b34b"
     },
     {
       "path": "scripts/start_web.sh",
@@ -176,12 +156,12 @@
     {
       "path": "supabase/migration_v2_trigger_lab.sql",
       "bytes": 9092,
-      "sha256": "2184ad47d77d41753980ec3e43bbe0320813964060fee6a77fef4a22defa5b4f"
+      "sha256": "9fa46060a191de18a94134a76b9c21178c5e8174ea49dadc28a6ebdff2216ba9"
     },
     {
       "path": "supabase/schema.sql",
       "bytes": 9092,
-      "sha256": "2184ad47d77d41753980ec3e43bbe0320813964060fee6a77fef4a22defa5b4f"
+      "sha256": "9fa46060a191de18a94134a76b9c21178c5e8174ea49dadc28a6ebdff2216ba9"
     },
     {
       "path": "tests/conftest.py",
@@ -192,6 +172,11 @@
       "path": "tests/test_config.py",
       "bytes": 1202,
       "sha256": "b48beecb1996305c412d3bf6a6f7c874ba51df4166c91acc9e3167bf41a197a4"
+    },
+    {
+      "path": "tests/test_exports.py",
+      "bytes": 2239,
+      "sha256": "080b4fa9751dc03d108bc7a6e10ffa5bfea6c5a1329a87e782030a361423b066"
     },
     {
       "path": "tests/test_package.py",
