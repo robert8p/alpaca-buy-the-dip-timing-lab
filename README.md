@@ -1,4 +1,4 @@
-# Alpaca Dip-Reversal Trigger Discovery Lab v2.0.0
+# Alpaca Dip-Reversal Trigger Discovery Lab v2.0.1
 
 A research-only FastAPI application that identifies **state-based intraday dip-reversal triggers** rather than optimising a fixed clock time.
 

@@ -1,7 +1,7 @@
 {
   "name": "Alpaca Dip-Reversal Trigger Discovery Lab",
-  "version": "2.0.0",
-  "file_count": 35,
+  "version": "2.0.1",
+  "file_count": 37,
   "files": [
     {
       "path": ".dockerignore",
@@ -20,13 +20,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 764,
-      "sha256": "4e6bf9115425d2226cacc7b28ba9a34b770ff9cee657b8c9957cf807cd55eb51"
+      "bytes": 1200,
+      "sha256": "242ff0ae3bed7254eef7e22eb8c77769062d511709321ab8f95b87c0f6812127"
     },
     {
       "path": "DEPLOYMENT.md",
-      "bytes": 4222,
-      "sha256": "6dfc34f3705479eb3f8c655976acc00b92d51f002b475d0c6c259d94d6b6b5e9"
+      "bytes": 4849,
+      "sha256": "0169713ab282296eb74a6d1160c10de2ca953c544a538b54c49546b2c7745b10"
     },
     {
       "path": "Dockerfile",
@@ -41,22 +41,22 @@
     {
       "path": "README.md",
       "bytes": 2697,
-      "sha256": "22228f05b8a01faf6f6284802508baa19f2995d8bb99d33069dcf2a9c70410a1"
+      "sha256": "dd8612fd1e5f4f1e00ab09556795ed0203ae7c9cacbb340f22a01cf108935418"
     },
     {
       "path": "TROUBLESHOOTING.md",
-      "bytes": 1872,
-      "sha256": "7568f32836dee108b3b475f5e089d43e93b694da3fc6cbd870c8c3d963bcb817"
+      "bytes": 2255,
+      "sha256": "080c0997707aaab45d87421661fffbe6e116adf287c23fc9836e376d9e9b87ec"
     },
     {
       "path": "VALIDATION_RESULTS.txt",
-      "bytes": 1129,
-      "sha256": "4787b90dea22bec1f8dc96e6d0cd83b2db04aa9afadd96e12f2595469246628e"
+      "bytes": 1389,
+      "sha256": "4380d661adef6bf03fa71aa0db0bdc521649a6c969909a7e328a59484e8e4883"
     },
     {
       "path": "app/__init__.py",
       "bytes": 22,
-      "sha256": "ffb3a541d6d590ae2369dd022dda48d20ad3fb31006feaa01661f9985cc35e20"
+      "sha256": "c00c642bcc35defaa8178ec0f22a96752948811457999890d11e3078f65fce1b"
     },
     {
       "path": "app/alpaca.py",
@@ -101,7 +101,7 @@
     {
       "path": "app/templates/base.html",
       "bytes": 742,
-      "sha256": "59d855812cb8f5d5a897c3f0e8264ab0d57b8c30c7e64d5534c7d2f6c8dab201"
+      "sha256": "74fa09bf0177089d2c92c1dd03a45f4b0cd4a7c9e54d4b562f2e569fb758d187"
     },
     {
       "path": "app/templates/dashboard.html",
@@ -120,8 +120,8 @@
     },
     {
       "path": "app/worker.py",
-      "bytes": 36193,
-      "sha256": "81fa642069a15ab835d140ac64b0cf3eac9377e76c26b0479875d50e8437e651"
+      "bytes": 38078,
+      "sha256": "81d797c4bd82685273674e6f2eaf218f260df57408ea6c5302a7b3c856faca9c"
     },
     {
       "path": "examples/candidate_dates_template.csv",
@@ -141,7 +141,7 @@
     {
       "path": "scripts/check_package.py",
       "bytes": 2103,
-      "sha256": "d5aed29772b287b67c469652858acfaef8761de9c523364e5c040e6fc8153f0e"
+      "sha256": "76f97855d6496e8711babf632fac32c8e6687781060fd4141632a63bef6f265a"
     },
     {
       "path": "scripts/start_web.sh",
@@ -156,17 +156,22 @@
     {
       "path": "supabase/migration_v2_trigger_lab.sql",
       "bytes": 9092,
-      "sha256": "0206eab5dd8bbaedb5019956ded93197d93eb25189620af8ad6fb01baa45f718"
+      "sha256": "e075d2778193cd507db59f0994ac3965ed24630f5afa8f726dc505ea5c749c7c"
     },
     {
       "path": "supabase/schema.sql",
       "bytes": 9092,
-      "sha256": "0206eab5dd8bbaedb5019956ded93197d93eb25189620af8ad6fb01baa45f718"
+      "sha256": "e075d2778193cd507db59f0994ac3965ed24630f5afa8f726dc505ea5c749c7c"
     },
     {
       "path": "tests/conftest.py",
       "bytes": 144,
       "sha256": "0cb67ba91674c07e557440292720aa3c3c111f4c41b7db1f4d219a7c68dc6f52"
+    },
+    {
+      "path": "tests/test_config.py",
+      "bytes": 1202,
+      "sha256": "b48beecb1996305c412d3bf6a6f7c874ba51df4166c91acc9e3167bf41a197a4"
     },
     {
       "path": "tests/test_package.py",
@@ -177,6 +182,11 @@
       "path": "tests/test_research.py",
       "bytes": 9227,
       "sha256": "4a210f2e655e1a6f2eec7b370a5afeb476fe802f183f6e5d7aa9d3b785e5c520"
+    },
+    {
+      "path": "tests/test_worker_sql.py",
+      "bytes": 2182,
+      "sha256": "40b1608dff456ee3c84b062a2061db953c8e2306fbe6db4c319248fa39ed578d"
     }
   ]
 }

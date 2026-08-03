@@ -1,13 +1,16 @@
-Alpaca Dip-Reversal Trigger Discovery Lab v2.0.0
+Alpaca Dip-Reversal Trigger Discovery Lab v2.0.1
 Validation date: 2026-08-03
 
-PASS: 24 automated tests
+PASS: 32 automated tests with the retained v1 compatibility test set
+PASS: the three previously failing v1 compatibility assertions
 PASS: Python AST/compile validation for all application modules
 PASS: 4 Jinja template parses
 PASS: Render Blueprint parse with 2 services (web + worker)
-PASS: 13 FastAPI routes imported using dependency stubs
 PASS: isolated additive dip_trigger_* schema and claim function present
-PASS: stale-work SQL explicitly qualifies both candidate and run retry_count columns
+PASS: v2 stale-work SQL explicitly qualifies candidate and run retry_count columns
+PASS: conditional legacy v1 stale-work recovery uses qualified aliases
+PASS: original scanner audit fields first_alerted_at and live_scan_jobs.cutoff_at retained
+PASS: calibration job source and parameters metadata retained
 PASS: no Alpaca account, position or order endpoint present
 PASS: exact next-minute entry test
 PASS: no-trigger-without-oversold-state test
@@ -23,4 +26,4 @@ Not performed in this environment:
 - Credentialed Alpaca historical-data request
 - End-to-end Render deployment
 
-Those are covered by the documented three-symbol proof run after deployment.
+Those are covered by the documented proof run after deployment.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+- Restored v1 scanner-schema compatibility assertions in the v2 package so GitHub uploads overwrite stale `tests/test_worker_sql.py` files.
+- Retained and explicitly tested `first_alerted_at`, `live_scan_jobs.cutoff_at`, and calibration-job metadata handling.
+- Added conditional recovery for stale v1 timing-lab runs when legacy `dip_*` tables coexist with v2.
+- Kept v2 `dip_trigger_*` stale-work recovery fully qualified.
+
 ## 2.0.0
 
 - Replaced fixed-time optimisation with state-based dip-reversal trigger discovery.

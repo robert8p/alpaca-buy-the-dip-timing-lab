@@ -56,3 +56,7 @@ Deploy the latest commit and use **Retry and resume**. Stale running candidates 
 ## Negative result
 
 Do not relax thresholds after viewing outcomes and rerun until something wins. That converts research into overfitting. A negative result is the intended stopping condition.
+
+## Docker build fails in `tests/test_worker_sql.py`
+
+Cause: v1 test files remained in GitHub because uploading v2.0.0 did not delete files omitted from the new package. Version 2.0.1 includes replacement compatibility tests and retains the corresponding scanner audit protections. Upload the complete v2.0.1 `tests` directory and redeploy. The expected build result is `32 passed`.

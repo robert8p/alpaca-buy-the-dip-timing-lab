@@ -92,6 +92,47 @@ def _recover_stale_work() -> None:
         """,
         (settings.stale_work_minutes,),
     )
+    _recover_legacy_v1_stale_work()
+
+
+def _recover_legacy_v1_stale_work() -> None:
+    """Recover stale v1 timing-lab work when the legacy tables coexist.
+
+    This is deliberately conditional: v2 uses isolated dip_trigger_* tables,
+    but the same Supabase project may still contain unfinished v1 runs.
+    """
+    tables = fetch_one(
+        """
+        select to_regclass('public.dip_candidates') as candidates_table,
+               to_regclass('public.dip_runs') as runs_table
+        """
+    )
+    if not tables or not tables.get("candidates_table") or not tables.get("runs_table"):
+        return
+    execute(
+        """
+        update public.dip_candidates as c
+        set status='queued', retry_count=c.retry_count+1,
+            last_error=coalesce(c.last_error || '; ', '') || 'requeued_after_stale_worker'
+        from public.dip_runs as dr
+        where c.run_id=dr.id and c.status='running' and dr.status='running'
+          and coalesce(dr.heartbeat_at,dr.started_at,dr.created_at) < now() - make_interval(mins => %s)
+        """,
+        (settings.stale_work_minutes,),
+    )
+    execute(
+        """
+        update public.dip_runs as dr
+        set status=case when dr.cancel_requested then 'cancelled' else 'queued' end,
+            stage=case when dr.cancel_requested then 'cancelled_after_restart' else 'recovered_after_restart' end,
+            retry_count=dr.retry_count+1,
+            last_error=case when dr.cancel_requested then dr.last_error else coalesce(dr.last_error || '; ', '') || 'worker heartbeat stale; requeued by v2 compatibility recovery' end,
+            completed_at=case when dr.cancel_requested then now() else dr.completed_at end
+        where dr.status='running'
+          and coalesce(dr.heartbeat_at,dr.started_at,dr.created_at) < now() - make_interval(mins => %s)
+        """,
+        (settings.stale_work_minutes,),
+    )
 
 
 def _cancel_requested(run_id: str) -> bool:
@@ -159,7 +200,7 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
         if job_exists and job_exists["table_name"]:
             job_columns = {row["column_name"] for row in fetch_all("select column_name from information_schema.columns where table_schema='public' and table_name='live_scan_jobs'")}
             if {"id", "cutoff_at"}.issubset(job_columns):
-                job_join = "left join public.live_scan_jobs as j on j.id=a.job_id"
+                job_join = "left join public.live_scan_jobs as j on j.id = a.job_id"
                 job_cutoff = True
                 if "source" in job_columns:
                     job_source_projection = "j.source::text as job_source"
@@ -193,9 +234,9 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
     merged: dict[tuple[str, date], dict[str, Any]] = {}
     excluded = 0
     for row in alerts:
-        historical = job_marks_historical_calibration(row)
+        is_calibration = job_marks_historical_calibration(row)
         all_keys = list(alert_availability) + (["job_cutoff_at"] if job_cutoff else [])
-        if historical:
+        if is_calibration:
             logical = [key for key in all_keys if key not in {"created_at", "first_alerted_at"}]
             available_at = latest_candidate_availability([row.get(f"availability_{key}") for key in logical], row["trade_date"])
             if available_at is None:
@@ -215,7 +256,7 @@ def _scanner_alert_candidates(run: dict[str, Any]) -> int:
         current = merged.get(key)
         details = {
             "alert_ids": sorted(set((current or {}).get("source_details", {}).get("alert_ids", []) + [row["source_alert_id"]])),
-            "historical_calibration": bool(historical or (current or {}).get("source_details", {}).get("historical_calibration")),
+            "historical_calibration": bool(is_calibration or (current or {}).get("source_details", {}).get("historical_calibration")),
         }
         scan_list = sorted(set((current or {}).get("source_scan_types", []) + [str(row["scan_type"])]))
         if current is None or available_at < current["available_at"]:

@@ -2,9 +2,24 @@
 
 This version replaces the web and worker code of the existing Buy-the-Dip Timing Lab but uses new `dip_trigger_*` tables. Existing `dip_*` timing-lab data remains untouched.
 
+## Upgrade from the failed v2.0.0 build
+
+The v2.0.0 ZIP did not contain `tests/test_worker_sql.py` or `tests/test_config.py`. GitHub web uploads replace matching files but do not delete files that are absent from the upload, so the v1 copies remained in the repository and were executed by Docker.
+
+For v2.0.1, upload **all files**, including the complete `tests` folder. Confirm that GitHub shows these four test files before redeploying:
+
+```text
+tests/test_config.py
+tests/test_package.py
+tests/test_research.py
+tests/test_worker_sql.py
+```
+
+No Supabase migration or environment-variable change is required for this patch.
+
 ## 1. Download and extract
 
-Extract `alpaca_dip_reversal_trigger_lab_v2.0.0.zip`.
+Extract `alpaca_dip_reversal_trigger_lab_v2.0.1.zip`.
 
 The files inside the extracted folder—not the outer folder itself—must sit at the root of the GitHub repository.
 
@@ -46,7 +61,7 @@ Every column should show a table name, not `null`.
 ## 3. Replace the GitHub files
 
 1. Open the existing timing-lab GitHub repository.
-2. Upload everything inside the extracted v2.0.0 folder.
+2. Upload everything inside the extracted v2.0.1 folder.
 3. Replace existing files.
 4. Commit:
 
@@ -111,7 +126,7 @@ https://YOUR-WEB-SERVICE.onrender.com/health
 ```json
 {
   "status": "ok",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "app": "alpaca-dip-reversal-trigger-lab",
   "trading_enabled": false
 }
