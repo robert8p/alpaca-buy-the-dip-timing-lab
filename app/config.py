@@ -37,7 +37,7 @@ class Settings:
         }
 
     def validate_web(self) -> None:
-        missing = []
+        missing: list[str] = []
         if not self.database_url:
             missing.append("DATABASE_URL")
         if not self.app_password or len(self.app_password) < 12:
@@ -48,7 +48,7 @@ class Settings:
             raise RuntimeError("Missing or insecure web settings: " + ", ".join(missing))
 
     def validate_worker(self) -> None:
-        missing = []
+        missing: list[str] = []
         if not self.database_url:
             missing.append("DATABASE_URL")
         if not self.alpaca_api_key:

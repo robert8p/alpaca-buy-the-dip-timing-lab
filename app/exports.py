@@ -1,109 +1,82 @@
 from __future__ import annotations
 
-import hashlib
+import csv
 import io
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
-import pandas as pd
-
-from . import __version__
 from .db import fetch_all, fetch_one
 
 
+def _json_default(value: Any):
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    raise TypeError(type(value).__name__)
+
+
 def _csv_bytes(rows: list[dict[str, Any]]) -> bytes:
-    return pd.DataFrame(rows).to_csv(index=False).encode("utf-8")
+    output = io.StringIO()
+    if not rows:
+        output.write("")
+        return output.getvalue().encode()
+    writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()), extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        cleaned = {}
+        for key, value in row.items():
+            cleaned[key] = json.dumps(value, default=_json_default, sort_keys=True) if isinstance(value, (dict, list)) else value
+        writer.writerow(cleaned)
+    return output.getvalue().encode()
 
 
 def build_run_export(run_id: str) -> tuple[str, bytes]:
-    run = fetch_one("select * from public.dip_runs where id=%s", (run_id,))
+    run = fetch_one("select * from public.dip_trigger_runs where id=%s", (run_id,))
     if not run:
         raise ValueError("Run not found")
+    include_sealed = bool(run["sealed_opened"])
     candidates = fetch_all(
         """
-        select id, run_id, symbol, trade_date, cutoff_at, source, source_alert_id,
-               source_available_at, session_open_at, session_close_at, split,
-               candidate_features, passed_dip_filter, filter_reasons, status, bar_count,
-               quality_flags, retry_count, last_error
-        from public.dip_candidates
-        where run_id=%s and (%s or split is null or split <> 'sealed_test')
-        order by trade_date, symbol
+        select * from public.dip_trigger_candidates
+        where run_id=%s and (%s or split <> 'sealed_test')
+        order by trade_date,symbol
         """,
-        (run_id, run["sealed_opened"]),
+        (run_id, include_sealed),
     )
     trials = fetch_all(
         """
-        select candidate_id, symbol, trade_date, split, variant_key, entry_at, entry_price,
-               entry_reason, target_price, stop_price, target_hit, first_target_hit_at,
-               stop_hit, first_stop_hit_at, exit_at, exit_price, exit_reason,
-               gross_return_pct, max_gain_pct, max_drawdown_pct, same_bar_ambiguous
-        from public.dip_trials
+        select * from public.dip_trigger_trials
         where run_id=%s and (%s or split <> 'sealed_test')
-        order by trade_date, symbol, variant_key
+        order by trade_date,symbol,recipe_key
         """,
-        (run_id, run["sealed_opened"]),
+        (run_id, include_sealed),
     )
     metrics = fetch_all(
         """
-        select split, segment_key, variant_key, cost_bps, observations, independent_dates, symbols,
-               mean_net_return_pct, median_net_return_pct, win_rate_pct,
-               net_target_success_rate_pct, net_target_wilson_low_pct, net_target_daily_ci_low_pct, loss_5pct_rate_pct,
-               target_before_stop_rate_pct, stop_before_target_rate_pct,
-               bootstrap_ci_low_pct, bootstrap_ci_high_pct, p_value, q_value, metrics_json
-        from public.dip_metrics
+        select * from public.dip_trigger_metrics
         where run_id=%s and (%s or split <> 'sealed_test')
-        order by split, cost_bps, variant_key
+        order by split,cost_bps desc,segment_key,recipe_key
         """,
-        (run_id, run["sealed_opened"]),
+        (run_id, include_sealed),
     )
-    issues = fetch_all(
-        """
-        select i.candidate_id, i.symbol, i.trade_date, i.stage, i.severity, i.message, i.created_at
-        from public.dip_issues i
-        left join public.dip_candidates c on c.id=i.candidate_id
-        where i.run_id=%s and (%s or c.split is null or c.split <> 'sealed_test')
-        order by i.created_at
-        """,
-        (run_id, run["sealed_opened"]),
-    )
-    payloads = {
-        "candidates.csv": _csv_bytes(candidates),
-        "trials.csv": _csv_bytes(trials),
-        "metrics.csv": _csv_bytes(metrics),
-        "issues.csv": _csv_bytes(issues),
-        "run.json": json.dumps(run, default=str, sort_keys=True, indent=2).encode("utf-8"),
-        "README.txt": (
-            "Alpaca Buy-the-Dip Timing Lab export\n"
-            "=====================================\n"
-            "Fixed-time entries require the exact requested one-minute bar; missing minutes are never forward-filled.\n"
-            "Confirmation entries use the next consecutive one-minute bar open.\n"
-            "If target and stop occur in the same minute bar, the stop is assumed first.\n"
-            "Costs are deducted from gross returns in the metrics files.\n"
-            + (
-                "Sealed-test outcomes are included because the sealed test was explicitly opened.\n"
-                if run["sealed_opened"]
-                else "Sealed-test candidates and outcomes are intentionally excluded from this export.\n"
-            )
-            + "The sealed-test split must not be used to retune the entry variants.\n"
-            + "This package is research output, not a trading instruction.\n"
-        ).encode("utf-8"),
-    }
+    issues = fetch_all("select * from public.dip_trigger_issues where run_id=%s order by created_at", (run_id,))
     manifest = {
-        "app_version": __version__,
+        "app": "Alpaca Dip-Reversal Trigger Discovery Lab",
         "run_id": run_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "files": [
-            {"name": name, "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest()}
-            for name, content in payloads.items()
-        ],
+        "sealed_included": include_sealed,
+        "counts": {"candidates": len(candidates), "trials": len(trials), "metrics": len(metrics), "issues": len(issues)},
+        "warning": "A positive validation result is not live-trading approval. The app contains no order endpoints.",
     }
-    payloads["manifest.json"] = json.dumps(manifest, sort_keys=True, indent=2).encode("utf-8")
-
-    output = io.BytesIO()
-    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name, content in payloads.items():
-            archive.writestr(name, content)
-    filename = f"dip_timing_run_{run_id}.zip"
-    return filename, output.getvalue()
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", json.dumps(manifest, indent=2, default=_json_default))
+        archive.writestr("run.json", json.dumps(run, indent=2, default=_json_default))
+        archive.writestr("candidates.csv", _csv_bytes(candidates))
+        archive.writestr("trials.csv", _csv_bytes(trials))
+        archive.writestr("metrics.csv", _csv_bytes(metrics))
+        archive.writestr("issues.csv", _csv_bytes(issues))
+    return f"dip_trigger_run_{run_id}.zip", payload.getvalue()

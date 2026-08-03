@@ -1,191 +1,182 @@
 {
+  "name": "Alpaca Dip-Reversal Trigger Discovery Lab",
+  "version": "2.0.0",
+  "file_count": 35,
   "files": [
     {
-      "bytes": 70,
       "path": ".dockerignore",
+      "bytes": 70,
       "sha256": "0a3136e9a47f7addc2aec92be867e7e6f95f78c79badbe617049bd664e63c696"
     },
     {
-      "bytes": 500,
       "path": ".env.example",
-      "sha256": "462e18365ef389e96e14d63398f5127a9fbf720126b252c7fda205c253d3b473"
+      "bytes": 355,
+      "sha256": "e222c5fdb423ee7c00325ccfa6d72ae1181f3239c5a8dc9dfd5371dc1e70c971"
     },
     {
-      "bytes": 68,
       "path": ".gitignore",
+      "bytes": 68,
       "sha256": "ddd417795a21925783da8b9e37b0fac1d670d4bc4e29758664f2286a17f2b8f9"
     },
     {
-      "bytes": 2916,
       "path": "CHANGELOG.md",
-      "sha256": "2bbbb7352640ed83e9797070662768c29b2570af4cbe2e5e7f3215cffb8b3e84"
+      "bytes": 764,
+      "sha256": "4e6bf9115425d2226cacc7b28ba9a34b770ff9cee657b8c9957cf807cd55eb51"
     },
     {
-      "bytes": 13944,
       "path": "DEPLOYMENT.md",
-      "sha256": "19fb7b76bd2fdb6b770ec50b357f8ce4b0c6cde630ec37e0db43a80865f317b6"
+      "bytes": 4222,
+      "sha256": "6dfc34f3705479eb3f8c655976acc00b92d51f002b475d0c6c259d94d6b6b5e9"
     },
     {
-      "bytes": 271,
       "path": "Dockerfile",
-      "sha256": "c4d4bbb5ecf644995b78d062625c258c4add1d49877e252a4b7c869b88ef9923"
+      "bytes": 216,
+      "sha256": "e0a410f0c08e4440b03cad7b0871de7a17cd388b36ff977ba8476e3a5312acb2"
     },
     {
-      "bytes": 9111,
       "path": "MODEL_SPEC.md",
-      "sha256": "d93cfeb00e4b9e48e8685378e5907dcaefd7a22dd6919fd99ecb7544626b99b3"
+      "bytes": 4269,
+      "sha256": "e2c23f222ecf6ed31dcfec3fe98d063343f210eb18144eeb7737d69549d0ea03"
     },
     {
-      "bytes": 6124,
       "path": "README.md",
-      "sha256": "75783a3fafcd20d62500ebb99b8da09df50b4cb4d59650b30e4d0ea7b792fc68"
+      "bytes": 2697,
+      "sha256": "22228f05b8a01faf6f6284802508baa19f2995d8bb99d33069dcf2a9c70410a1"
     },
     {
-      "bytes": 8311,
       "path": "TROUBLESHOOTING.md",
-      "sha256": "3e697019ba4b6649e3670b650fa2ef692a84abe8f81c95d595c6e461c8d0e70c"
+      "bytes": 1872,
+      "sha256": "7568f32836dee108b3b475f5e089d43e93b694da3fc6cbd870c8c3d963bcb817"
     },
     {
-      "bytes": 4548,
       "path": "VALIDATION_RESULTS.txt",
-      "sha256": "e070cc5ba82828b870de87f1e9f0962f60c5c72245209dca6b128f59c6f6109c"
+      "bytes": 1129,
+      "sha256": "4787b90dea22bec1f8dc96e6d0cd83b2db04aa9afadd96e12f2595469246628e"
     },
     {
-      "bytes": 22,
       "path": "app/__init__.py",
-      "sha256": "69cb91fd7489ce9e0ead0e53f3e01ce6061ee3c994c0e6eec234668ac16667b9"
+      "bytes": 22,
+      "sha256": "ffb3a541d6d590ae2369dd022dda48d20ad3fb31006feaa01661f9985cc35e20"
     },
     {
-      "bytes": 3650,
       "path": "app/alpaca.py",
+      "bytes": 3650,
       "sha256": "eb0ce2ff161ced2d8bbf0292be3f601f2f7bde4978feb4ed04abd7c9afb87b34"
     },
     {
-      "bytes": 392,
       "path": "app/auth.py",
+      "bytes": 392,
       "sha256": "277035f9ea5c40c11cd2716ce2c0b9836dfa1953603939ff8fcf41fc648b1847"
     },
     {
-      "bytes": 3231,
       "path": "app/config.py",
-      "sha256": "fad27ffc8da1c336954c5d694da4118b0e8758ce6491152a2e9fca91f537f5df"
+      "bytes": 3253,
+      "sha256": "f32c3988febd39a9eb9a39fc01b16bd9a0a742e3bbe3a95d9dcd8d421e5dd7ef"
     },
     {
-      "bytes": 1619,
       "path": "app/db.py",
+      "bytes": 1619,
       "sha256": "a08e33abac3803265eb1b29772e3f23c7d81b3fdad984c59cf81888bea3fa491"
     },
     {
-      "bytes": 4741,
       "path": "app/exports.py",
-      "sha256": "de743a3d1008ed463b19fa593e675cc2dc79ea09ff6ad6fba9e7f29c0845a209"
+      "bytes": 3086,
+      "sha256": "753aa9a4270c7ead178cd38d886bc5954e050c4db65f15c3f003ef4fd0a323c8"
     },
     {
-      "bytes": 17837,
       "path": "app/main.py",
-      "sha256": "eeb74c75dfa3c864637fa3c55175a37fd050c6f9a5ec80a901522ea42884a6cb"
+      "bytes": 16270,
+      "sha256": "34a139870ca92e0d7b2d8c83fe4348fd63c14d0eef3f7d3ef2eed65d6465c233"
     },
     {
-      "bytes": 24285,
       "path": "app/research.py",
-      "sha256": "289732814698c6c35b967982ee510b154a22525ce9e48ed26e10923fa298d2a6"
+      "bytes": 30654,
+      "sha256": "bf4c4dec158cf09a5542c974942827a934bd8e79da0113cbe631af698aa923b4"
     },
     {
-      "bytes": 7015,
       "path": "app/static/styles.css",
+      "bytes": 7015,
       "sha256": "965f61c61de6a7743ed3952273a4eeebfce9e89476033bcd1cd59bdd88f7f5e7"
     },
     {
-      "bytes": 806,
       "path": "app/templates/base.html",
-      "sha256": "c00987428fadf68cf64075a4f26149d724431d18b6619fce027e1a44722c9cbc"
+      "bytes": 742,
+      "sha256": "59d855812cb8f5d5a897c3f0e8264ab0d57b8c30c7e64d5534c7d2f6c8dab201"
     },
     {
-      "bytes": 6776,
       "path": "app/templates/dashboard.html",
-      "sha256": "41b72415af65f03b151d5f0d7b271bc54fa9a61bb12818c69d926cbf5fb537d9"
+      "bytes": 6275,
+      "sha256": "7358becb3dd54c738982993a41d15e4c2adf37521fb8a85d6c369174f8e94dbf"
     },
     {
-      "bytes": 683,
       "path": "app/templates/login.html",
-      "sha256": "0336585f66b223ec1ad23cad9f75fab86f8bfad30ef066171df971c1196dd2ae"
+      "bytes": 693,
+      "sha256": "9f2ad5dd72bb325db7118753e2eba3c5ed03c3d8b37e917c0a54e1bc9fc09bbd"
     },
     {
-      "bytes": 7479,
       "path": "app/templates/run_detail.html",
-      "sha256": "3d2596ee43de674363746e474a3eb3f7363f3919bd2100a703d04df0f162b61d"
+      "bytes": 6619,
+      "sha256": "20eda2343e34cd98f82df573200a745889316aca8a7c5b8fa88023eb78784a7c"
     },
     {
-      "bytes": 42698,
       "path": "app/worker.py",
-      "sha256": "d77d71c34bc4b615ecdcc127653b1eacf0aa27613f456494abba8325b02dc608"
+      "bytes": 36193,
+      "sha256": "81fa642069a15ab835d140ac64b0cf3eac9377e76c26b0479875d50e8437e651"
     },
     {
-      "bytes": 66,
       "path": "examples/candidate_dates_template.csv",
-      "sha256": "1fdbd6508b038280e3adddc40dffe17661de7516dd8363d07f0b6bd95a2420b5"
+      "bytes": 78,
+      "sha256": "6ce1bad28cdc405b0e890f364d7ded8f28f8570715f3474a225231fa6f8fa8ff"
     },
     {
-      "bytes": 1099,
       "path": "render.yaml",
-      "sha256": "dc00412323596cc384de430679e415675643257abf44dac4d5bd907cb7ca0dca"
+      "bytes": 874,
+      "sha256": "6efbcc9a39b9b5f94f1f9c28f0b2fc5209ca8ca5104a0a2edf89bf8d3ea7fbca"
     },
     {
-      "bytes": 200,
       "path": "requirements.txt",
+      "bytes": 200,
       "sha256": "3bb27dc40cf5f2e4c1503cc7c8c282ca8a337af311063113ef98c714ac3e518c"
     },
     {
-      "bytes": 1231,
       "path": "scripts/check_package.py",
-      "sha256": "3ea50068f50c89041fedba95182dc00aa298105afa6da93d8b21a5e804d81587"
+      "bytes": 2103,
+      "sha256": "d5aed29772b287b67c469652858acfaef8761de9c523364e5c040e6fc8153f0e"
     },
     {
-      "bytes": 666,
-      "path": "scripts/export_clean_trials.sql",
-      "sha256": "b1b1f6091bc85b2d287371363c4e64a3c07a699cb7bbd1e6dd0bc9ff5eb63e06"
-    },
-    {
-      "bytes": 102,
       "path": "scripts/start_web.sh",
+      "bytes": 102,
       "sha256": "05457b869df8c9969fc1b3a8059f31c0ae6c6de3720f3814f38feef7f20a6542"
     },
     {
-      "bytes": 535,
       "path": "scripts/verify.sql",
-      "sha256": "ffa94d5924419c74cab6e884e945cb272d8b1a7c50b95c43c1a4074e21db8dd2"
+      "bytes": 451,
+      "sha256": "b5d4fad92ce80515881bb3fc86ebac696527ba6db80b3eb78408dfee182cceb5"
     },
     {
-      "bytes": 9486,
-      "path": "supabase/migration_add_dip_lab.sql",
-      "sha256": "8eb5ee8057908e1972a259e30ff67e04e439da17d137b9735f1431f14aaeb5b6"
+      "path": "supabase/migration_v2_trigger_lab.sql",
+      "bytes": 9092,
+      "sha256": "0206eab5dd8bbaedb5019956ded93197d93eb25189620af8ad6fb01baa45f718"
     },
     {
-      "bytes": 9486,
       "path": "supabase/schema.sql",
-      "sha256": "8eb5ee8057908e1972a259e30ff67e04e439da17d137b9735f1431f14aaeb5b6"
+      "bytes": 9092,
+      "sha256": "0206eab5dd8bbaedb5019956ded93197d93eb25189620af8ad6fb01baa45f718"
     },
     {
-      "bytes": 144,
       "path": "tests/conftest.py",
-      "sha256": "6d34c88cfc06ba1a91f2333fa65f64d270aaa45f686f86b551dbb9dfbef88085"
+      "bytes": 144,
+      "sha256": "0cb67ba91674c07e557440292720aa3c3c111f4c41b7db1f4d219a7c68dc6f52"
     },
     {
-      "bytes": 1202,
-      "path": "tests/test_config.py",
-      "sha256": "b48beecb1996305c412d3bf6a6f7c874ba51df4166c91acc9e3167bf41a197a4"
+      "path": "tests/test_package.py",
+      "bytes": 763,
+      "sha256": "2e956f78900bdab8f22a3ca9be187cf671ca1bb489b1b2b8fc9082189e395e34"
     },
     {
-      "bytes": 11461,
       "path": "tests/test_research.py",
-      "sha256": "422697faf421e467d203bbed3862987428de9909a4c996cd81cd5271f9d4e7c6"
-    },
-    {
-      "bytes": 2182,
-      "path": "tests/test_worker_sql.py",
-      "sha256": "40b1608dff456ee3c84b062a2061db953c8e2306fbe6db4c319248fa39ed578d"
+      "bytes": 9227,
+      "sha256": "4a210f2e655e1a6f2eec7b370a5afeb476fe802f183f6e5d7aa9d3b785e5c520"
     }
-  ],
-  "package": "alpaca-buy-the-dip-timing-lab",
-  "version": "1.0.4"
+  ]
 }

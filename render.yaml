@@ -3,9 +3,8 @@ services:
     name: alpaca-dip-timing-web
     runtime: docker
     plan: starter
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
     autoDeploy: true
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -17,12 +16,10 @@ services:
         generateValue: true
       - key: SESSION_COOKIE_SECURE
         value: "true"
-
   - type: worker
     name: alpaca-dip-timing-worker
     runtime: docker
     plan: starter
-    dockerfilePath: ./Dockerfile
     dockerCommand: python -m app.worker
     autoDeploy: true
     envVars:
@@ -36,11 +33,5 @@ services:
         value: sip
       - key: ALPACA_MARKET_DATA_RPM
         value: "60"
-      - key: WORKER_POLL_SECONDS
-        value: "5"
-      - key: STALE_WORK_MINUTES
-        value: "15"
-      - key: DEFAULT_COST_BPS
-        value: 15,20,50
       - key: BOOTSTRAP_ITERATIONS
         value: "2000"

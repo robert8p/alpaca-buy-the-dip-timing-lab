@@ -1,197 +1,58 @@
 # Troubleshooting
 
-## Web service fails with `Missing or insecure web settings`
+## `relation public.dip_trigger_runtime does not exist`
 
-Set these on the Render web service:
+Run `supabase/schema.sql` in the same Supabase project referenced by `DATABASE_URL`.
 
-```text
-DATABASE_URL
-APP_PASSWORD        at least 12 characters
-SESSION_SECRET      at least 32 characters
-SESSION_COOKIE_SECURE=true
+## Worker starts but no candidates are created
+
+For scanner mode, confirm the database contains `live_signal_alerts`. Run:
+
+```sql
+select scan_type,min(trade_date),max(trade_date),count(*)
+from public.live_signal_alerts
+group by scan_type;
 ```
 
-The Blueprint generates `SESSION_SECRET` automatically. Do not replace it with a short value.
+For manual mode, confirm symbols were entered.
 
-## Login succeeds but returns to the login page
+## Many scanner alerts are excluded
 
-Render serves the site through HTTPS and the Blueprint uses a secure session cookie. Confirm you are opening the `https://` URL, not an `http://` URL.
+The app excludes alerts whose auditable availability is after the configured search end. Historical calibration rows are recognised from scanner-job metadata. Exclusion is preferable to look-ahead bias.
 
-For local HTTP development only, set:
+## No trigger trials
 
-```text
-SESSION_COOKIE_SECURE=false
-```
+This means candidates did not satisfy both the oversold state and a selected reversal recipe. It is not an application failure. Review `quality_flags` and `issues.csv` before changing any threshold.
 
-Do not use that setting on Render.
+## `relative_strength_turn` never fires
 
-## Worker fails with missing Alpaca settings
-
-Set on the worker:
-
-```text
-DATABASE_URL
-ALPACA_API_KEY
-ALPACA_SECRET_KEY
-ALPACA_FEED=sip
-```
-
-Regenerating or resetting Alpaca credentials invalidates the old key pair.
-
-## `relation public.dip_runs does not exist`
-
-The Supabase schema was not run, or it was run in a different project. Open the project used by `DATABASE_URL`, run `supabase/schema.sql`, then restart both Render services.
-
-## `live_signal_alerts was not found`
-
-You selected **Existing midday scanner alerts**, but the connected Supabase project does not contain the live scanner tables.
-
-Recovery:
-
-- point `DATABASE_URL` at the existing scanner project;
-- use Manual symbols; or
-- upload a candidate CSV.
-
-## Scanner-alert mode says no auditable timestamp exists
-
-Upgrade to v1.0.4. The original live-scanner schema stores actual alert availability in `live_signal_alerts.first_alerted_at` and logical scan time in `live_scan_jobs.cutoff_at`; v1.0.4 supports both.
-
-If the error remains, verify that `live_signal_alerts.job_id` points to `live_scan_jobs.id`, or use Manual symbols / candidate CSV. Do not remove the guard: it prevents look-ahead bias, including UK–US daylight-saving mismatch weeks.
-
-## Scanner candidates were excluded as available after cutoff
-
-This is expected when an alert was generated or persisted after the research cutoff. The excluded row appears in `dip_issues`.
-
-Do not move its timestamp backwards. Use a later pre-registered entry window in a separate run if that is the real decision process you want to test.
-
-## `password authentication failed`
-
-The `DATABASE_URL` contains the wrong database password, or special characters were not URL-encoded.
-
-Copy the Session pooler string again from Supabase **Connect**, replace the password carefully, and update both Render services.
-
-## Connection errors to a `db....supabase.co` host
-
-The direct database endpoint may require IPv6. Use the **Session pooler** URL on port `5432`.
-
-## `prepared statement already exists` or transaction-pooler errors
-
-The app disables psycopg prepared statements, but the recommended connection remains the Session pooler on port `5432`. Replace a port-6543 transaction-pooler URL if errors persist.
-
-## Alpaca says recent SIP data is not permitted
-
-Use completed historical sessions whose query end is outside the delayed-data restriction, or use a subscription that permits the requested recent SIP period.
-
-For connectivity testing only, `ALPACA_FEED=iex` can be used in a separate run. Do not pool IEX and SIP results as though they were the same dataset.
-
-## The research app may affect the live scanner's Alpaca limit
-
-Alpaca request budgets can be shared. The supplied worker is capped at 60 requests per minute.
-
-Safest options:
-
-1. run the historical calibration outside live scan windows;
-2. use a separate available credential/account budget;
-3. lower `ALPACA_MARKET_DATA_RPM` further.
-
-Do not raise the limit until the proof run succeeds and you understand the aggregate account usage.
-
-## Run produces zero trials
-
-Open the run and inspect candidate status counts and issues.
-
-Common reasons:
-
-- no imported midday alerts in the selected date range;
-- every candidate failed the dip gate;
-- uploaded dates were weekends or holidays;
-- no regular-session bars were returned;
-- the exact requested entry minute was absent;
-- a confirmation occurred but the immediately consecutive entry minute was absent;
-- no valid close was available for a target-or-close outcome;
-- the candidate was outside the validation-selected price segment during sealed processing.
-
-For a pipeline proof, use 2–3 liquid symbols over a completed week and uncheck **Apply the frozen dip gate**.
-
-## Why did 12:31 not become 12:32?
-
-That is intentional. A missing 12:31 bar may reflect a halt or no executable print. Forward-filling it would test a different entry while still labelling it 12:31.
-
-Create a separate fixed 12:32 variant before the run if you explicitly want to test 12:32.
-
-## Candidate says `insufficient_point_in_time_bar_coverage`
-
-With the dip gate active, the exact session-open bar and exact 12:29 bar must exist for a 12:30 signal. The candidate is excluded rather than calculating the signal from stale data.
+Check that SPY one-minute bars are available from the configured Alpaca feed. Other recipes continue to run if SPY is unavailable.
 
 ## Run appears stuck
 
 Check:
 
-1. dashboard stage and heartbeat;
-2. Render worker logs;
-3. Supabase query:
+```sql
+select version,worker_status,active_run_id,heartbeat_at,last_error
+from public.dip_trigger_runtime
+where id=1;
+```
+
+Then:
 
 ```sql
-select id, status, stage, candidate_count, completed_candidate_count,
-       trial_count, issue_count, heartbeat_at, last_error
-from public.dip_runs
-order by created_at desc
-limit 10;
+select status,count(*)
+from public.dip_trigger_candidates
+where run_id='YOUR-RUN-ID'
+group by status;
 ```
 
-A recent heartbeat with rising completed candidates means the run is active. If the worker redeploys, stale work is automatically requeued after the configured 15-minute safety window.
+If the heartbeat is current, the worker is active. The interface refreshes every 15 seconds.
 
-## A candidate failed
+## A run failed after a Render restart
 
-Use **Retry and resume** on the same run. Completed trials are retained. The app blocks sealed opening while discovery/validation failures remain.
+Deploy the latest commit and use **Retry and resume**. Stale running candidates and runs are requeued with explicit table aliases to avoid the previous PostgreSQL ambiguity bug.
 
-## Duplicate trials
+## Negative result
 
-The database has a unique constraint on `(candidate_id, variant_key)`. Retrying a run cannot duplicate a completed trial.
-
-## Why are candidates marked `sealed`?
-
-That is the untouched final 20% of dates. They have not been processed. Review and freeze the validation winner before selecting **Open sealed test**.
-
-## Sealed test was opened but no results appear yet
-
-Opening the sealed test queues a second worker phase. Wait for the run to move through `queued`, `running` and `completed_sealed_test`.
-
-Only the validation-selected entry variant and price segment are processed.
-
-## Sealed test was opened too early
-
-Do not retune the rule and continue calling that split untouched. Create a new run with genuinely unused future dates or a new historical holdout period.
-
-## Pre-sealed export does not contain the final dates
-
-That is intentional. Before the sealed test is opened, the web export excludes sealed candidates, trials and metrics.
-
-## Render worker is unavailable on a free plan
-
-Render background workers require a paid instance type. The Blueprint requests Starter. The web service can be resized later, but the worker must exist while runs are processing.
-
-
-## Run-size guard triggered
-
-Manual runs are limited to 100 predeclared symbols and 200,000 symbol × calendar-day combinations. Candidate CSVs are limited to 100,000 rows. These guards prevent accidental multi-million-row jobs and oversized in-memory exports. Reduce the universe or date range without changing the hypothesis after viewing results.
-
-## Render error: `uvicorn app.main:app ...: not found`
-
-This was caused by the v1.0.0 Blueprint wrapping the Uvicorn command in nested shell quotes. Render then interpreted the entire Uvicorn command as one executable name.
-
-Use v1.0.1 or later. The corrected package removes the web `dockerCommand` and launches `scripts/start_web.sh` through the Dockerfile `CMD`.
-
-For an immediate repair to an already-created v1.0.0 web service, open **Settings → Docker Command**, replace the existing value with:
-
-```text
-python -m uvicorn app.main:app --host 0.0.0.0 --port 10000
-```
-
-Save the change and select **Manual Deploy → Deploy latest commit**. Render's default web-service port is 10000.
-
-## Worker crashes with `column reference "retry_count" is ambiguous`
-
-This affected v1.0.1 during the stale-work recovery check. The recovery query used `UPDATE ... FROM` against `dip_candidates` and `dip_runs`, both of which contain `retry_count` and `last_error`. PostgreSQL therefore required explicit target-table qualification.
-
-Upgrade to v1.0.2 or change the recovery assignments in `app/worker.py` to use `c.retry_count` and `c.last_error`. No Supabase schema change is required.
+Do not relax thresholds after viewing outcomes and rerun until something wins. That converts research into overfitting. A negative result is the intended stopping condition.

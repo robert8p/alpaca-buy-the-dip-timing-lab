@@ -1,22 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% block title %}Dip Timing Lab{% endblock %}</title>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Dip-Reversal Trigger Lab{% endblock %}</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-<header class="topbar">
-  <a class="brand" href="/">
-    <span class="brand-mark">D</span>
-    <span><strong>Dip Timing Lab</strong><small>Alpaca research only</small></span>
-  </a>
-  {% if request.session.get('authenticated') %}
-  <form method="post" action="/logout"><button class="ghost" type="submit">Sign out</button></form>
-  {% endif %}
-</header>
+<header class="topbar"><a class="brand" href="/"><span class="brand-mark">DR</span><span><strong>Dip-Reversal Trigger Lab</strong><small>v2.0.0 · Research only</small></span></a><form method="post" action="/logout"><button class="ghost-button">Sign out</button></form></header>
 <main class="shell">{% block content %}{% endblock %}</main>
-<footer>Research software only. No order placement. No historical result guarantees a future return.</footer>
+<footer>Research only · No order endpoints · All timestamps are New York time unless stated otherwise.</footer>
 </body>
 </html>

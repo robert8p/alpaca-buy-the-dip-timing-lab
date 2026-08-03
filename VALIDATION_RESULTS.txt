@@ -1,85 +1,26 @@
-Alpaca Buy-the-Dip Timing Lab v1.0.4
-Validation date: 2026-08-02
-============================================================
+Alpaca Dip-Reversal Trigger Discovery Lab v2.0.0
+Validation date: 2026-08-03
 
-OVERALL CODE/PACKAGE VERDICT
-PASS for packaging and credentialed cloud deployment testing.
-NOT YET END-TO-END PROVEN against the user's live Supabase and Alpaca accounts.
+PASS: 24 automated tests
+PASS: Python AST/compile validation for all application modules
+PASS: 4 Jinja template parses
+PASS: Render Blueprint parse with 2 services (web + worker)
+PASS: 13 FastAPI routes imported using dependency stubs
+PASS: isolated additive dip_trigger_* schema and claim function present
+PASS: stale-work SQL explicitly qualifies both candidate and run retry_count columns
+PASS: no Alpaca account, position or order endpoint present
+PASS: exact next-minute entry test
+PASS: no-trigger-without-oversold-state test
+PASS: same-bar target/stop conservative stop-first test
+PASS: gap-through stop test
+PASS: point-in-time feature test
+PASS: chronological split test
+PASS: floating-point net-target threshold test
+PASS: small-sample rejection and exceptional-small-sample policy tests
 
-AUTOMATED TESTS
-Command: pytest -q
-Result: 25 passed
+Not performed in this environment:
+- Credentialed live connection to the user's Supabase project
+- Credentialed Alpaca historical-data request
+- End-to-end Render deployment
 
-The test suite covers:
-- exact requested one-minute entry rather than forward-filling a missing minute;
-- signal features using only bars completed before the 12:30 ET cutoff;
-- confirmation entry on the next immediately consecutive minute bar;
-- target-before-stop path ordering;
-- conservative stop-first treatment when one bar contains both target and stop;
-- gap-through stop execution at the worse opening price;
-- MFE/MAE stopping at the simulated exit rather than using later prices;
-- early-close market-session filtering;
-- invalid OHLC-bar removal;
-- explicit dip-gate logic and non-overlapping price segments;
-- chronological rather than random discovery/validation/sealed splits;
-- London/New York daylight-saving mismatch conversion;
-- actual confirmation-entry time distribution reporting;
-- Wilson success bounds and multiple-testing correction;
-- evidence gating before cross-variant ranking, preventing tiny perfect samples from winning;
-- web and worker environment validation;
-- PostgreSQL stale-recovery target-column qualification.
-
-STATIC VALIDATION
-- Python compileall: passed for app, tests and scripts.
-- FastAPI import with isolated PostgreSQL stubs: passed.
-- Registered route paths: 12.
-  /, /health, /login, /logout, /runs, /runs/upload,
-  /runs/{run_id}, /runs/{run_id}/cancel, /runs/{run_id}/export,
-  /runs/{run_id}/open-sealed, /runs/{run_id}/retry, /static
-- Jinja templates parsed: 4.
-  base.html, dashboard.html, login.html, run_detail.html
-- Render Blueprint parsed: 2 services.
-  alpaca-dip-timing-web (web), alpaca-dip-timing-worker (worker)
-- Supabase full schema and additive migration: byte-identical.
-- Alpaca endpoint scan: market-data bars and market calendar only.
-- Order/account/position endpoint scan: none found.
-- Package inventory before manifest: 37 files.
-
-RESEARCH-INTEGRITY CONTROLS CONFIRMED IN CODE
-- Historical completed dates only.
-- One-minute split-adjusted Alpaca bars.
-- Official market-calendar open and close times.
-- Exact pre-cutoff bar required.
-- Exact session-open bar required whenever the dip gate is enabled.
-- Fixed entry at exact minute; no silent next-available-bar substitution.
-- Confirmation signal followed by next consecutive minute open.
-- Scanner alerts excluded when actual availability is after 12:30 ET.
-- Calibration rows use logical historical availability, including DST conversion.
-- Conservative same-bar target/stop and gap-through stop treatment.
-- Market-close outcome excluded when the final expected session bar is missing.
-- Highest configured cost stress used for winner selection.
-- Validation eligibility applied before variant ranking.
-- Sealed candidates unprocessed until explicit opening.
-- Only the frozen validation segment and variant run on sealed dates.
-- Pre-sealed exports exclude sealed candidates, trials, metrics and candidate issues.
-- No order-submission capability.
-
-LIMITATIONS OF THIS VALIDATION ENVIRONMENT
-- No user credentials were available, so the SQL was not applied to the live Supabase project.
-- No live Alpaca market-data or calendar request was made.
-- No real candidate run was executed against the user's scanner tables.
-- The PostgreSQL driver was unavailable in this offline validation environment, so application imports used isolated stubs rather than a real database connection.
-- The Docker image was not built here because dependency installation requires network access. The supplied Dockerfile installs pinned dependencies and runs pytest during every Render build.
-- PostgreSQL SQL syntax was inspected and cross-checked for schema/migration consistency, but not executed against a PostgreSQL server here.
-
-DEPLOYMENT ACCEPTANCE TEST STILL REQUIRED
-1. Run supabase/schema.sql successfully.
-2. Deploy both Render services.
-3. Confirm /health returns status ok and the worker heartbeat is recent.
-4. Run the documented three-symbol proof job.
-5. Confirm real dip_candidates, dip_trials and dip_metrics rows are produced.
-6. Only then queue the full historical run.
-
-V1.0.4 REGRESSION
-- Historical calibration job-source metadata is recognised without trusting current insert timestamps.
-- Live rows still use the latest auditable availability timestamp.
+Those are covered by the documented three-symbol proof run after deployment.
