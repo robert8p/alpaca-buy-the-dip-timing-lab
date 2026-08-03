@@ -698,8 +698,8 @@ async def _resolve_calendar_for_run(run: dict[str, Any], alpaca: AlpacaClient) -
                 set status='completed_with_warnings',stage='forward_window_waiting_for_data',
                     verdict='forward_window_incomplete',start_date=%s,end_date=%s,completed_at=now(),heartbeat_at=now(),
                     result_json=coalesce(result_json,'{}'::jsonb) || jsonb_build_object(
-                      'confirmation_target_sessions',%s,'completed_sessions_available',%s,
-                      'sessions_still_required',%s,'latest_completed_session',%s,
+                      'confirmation_target_sessions',%s::int,'completed_sessions_available',%s::int,
+                      'sessions_still_required',%s::int,'latest_completed_session',%s::text,
                       'confirmation_window_complete',false
                     )
                 where id=%s
@@ -729,8 +729,8 @@ async def _resolve_calendar_for_run(run: dict[str, Any], alpaca: AlpacaClient) -
                 set status='completed_with_warnings',stage='historical_window_insufficient',
                     verdict='backtest_window_insufficient',completed_at=now(),heartbeat_at=now(),
                     result_json=coalesce(result_json,'{}'::jsonb) || jsonb_build_object(
-                      'confirmation_target_sessions',%s,'historical_sessions_available',%s,
-                      'sessions_still_required',%s,'confirmation_window_complete',false
+                      'confirmation_target_sessions',%s::int,'historical_sessions_available',%s::int,
+                      'sessions_still_required',%s::int,'confirmation_window_complete',false
                     )
                 where id=%s
                 """,
@@ -750,8 +750,8 @@ async def _resolve_calendar_for_run(run: dict[str, Any], alpaca: AlpacaClient) -
         update public.dip_trigger_runs
         set start_date=%s,end_date=%s,confirmation_stage=%s,forward_stage=%s,
             result_json=coalesce(result_json,'{}'::jsonb) || jsonb_build_object(
-              'confirmation_target_sessions',%s,'confirmation_start_date',%s,'confirmation_end_date',%s,
-              'confirmation_window_complete',true,'confirmation_mode',%s
+              'confirmation_target_sessions',%s::int,'confirmation_start_date',%s::text,'confirmation_end_date',%s::text,
+              'confirmation_window_complete',true,'confirmation_mode',%s::text
             )
         where id=%s
         """,

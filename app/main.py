@@ -369,7 +369,7 @@ def extend_confirmation_run(request: Request, run_id: str):
         set confirmation_target_sessions=%s,forward_target_sessions=%s,confirmation_stage='extension_to_90',
             forward_stage='extension_to_90',status='queued',stage=%s,verdict=%s,completed_at=null,last_error=null,
             cancel_requested=false,result_json=coalesce(result_json,'{}'::jsonb) ||
-              jsonb_build_object('extension_authorised_at',now(),'confirmation_target_sessions',%s)
+              jsonb_build_object('extension_authorised_at',now(),'confirmation_target_sessions',%s::int)
         where id=%s
         """,
         (CONFIRMATION_MAX_SESSIONS, CONFIRMATION_MAX_SESSIONS, f"{prefix}_90_queued", f"{prefix}_90_queued", CONFIRMATION_MAX_SESSIONS, run_id),

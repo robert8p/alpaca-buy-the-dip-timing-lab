@@ -42,3 +42,17 @@ def test_historical_calibration_metadata_classifier():
     assert job_marks_historical_calibration({"job_parameters": {"calibration_request_id": "abc"}})
     assert job_marks_historical_calibration({"job_parameters": {"mode": "calibration_bootstrap"}})
     assert not job_marks_historical_calibration({"source_decision": "research", "job_source": "scheduled"})
+
+
+def test_confirmation_jsonb_parameters_have_explicit_postgres_types():
+    root = Path(__file__).resolve().parents[1] / "app"
+    worker_source = (root / "worker.py").read_text(encoding="utf-8")
+    main_source = (root / "main.py").read_text(encoding="utf-8")
+
+    assert "'confirmation_target_sessions',%s::int" in worker_source
+    assert "'completed_sessions_available',%s::int" in worker_source
+    assert "'historical_sessions_available',%s::int" in worker_source
+    assert "'confirmation_start_date',%s::text" in worker_source
+    assert "'confirmation_end_date',%s::text" in worker_source
+    assert "'confirmation_mode',%s::text" in worker_source
+    assert "'confirmation_target_sessions',%s::int" in main_source

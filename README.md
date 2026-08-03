@@ -1,4 +1,4 @@
-# Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab v2.2.2
+# Alpaca Dip-Reversal Trigger Discovery & Confirmation Lab v2.2.1
 
 A research-only web and worker application for discovering and validating intraday oversold-reversal triggers using Alpaca one-minute bars and Supabase.
 
@@ -51,7 +51,3 @@ supabase/migration_v2_2_historical_and_forward.sql
 ```
 
 before deploying the new code.
-
-## v2.2.2 fix
-
-Sealed historical and forward child creation now serialises PostgreSQL UUID and time values safely before storing the immutable frozen configuration. No Supabase migration is required from v2.2.0 or v2.2.1.

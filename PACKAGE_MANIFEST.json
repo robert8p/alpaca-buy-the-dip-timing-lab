@@ -1,6 +1,6 @@
 {
   "name": "Alpaca Dip-Reversal Trigger Discovery, Historical Backtest & Forward Confirmation Lab",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "file_count": 40,
   "files": [
     {
@@ -20,13 +20,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 1519,
-      "sha256": "300d9cff4b97cd1b55b83b26cc363c270756ae35e569ef32e2420785a93ca4a9"
+      "bytes": 1488,
+      "sha256": "b31852c94bb62351156355b4c84951c8574e2ed0114794fd8ad26fdb418e2fb9"
     },
     {
       "path": "DEPLOYMENT.md",
-      "bytes": 4409,
-      "sha256": "e50060e56476bd77228dbe88d862880a206e483ae1cd829bb148c4f4e9bc1de9"
+      "bytes": 4528,
+      "sha256": "d20fa7cb7a2497583e5a9b88b5a4946eefb4ab3cd1f07d5c78141623b321ef68"
     },
     {
       "path": "Dockerfile",
@@ -36,27 +36,27 @@
     {
       "path": "MODEL_SPEC.md",
       "bytes": 3056,
-      "sha256": "b2887b53c81d63fa5ace43c154999548ae15a2c7998d8e4b46b85138de3be433"
+      "sha256": "575b4e8e78dc307c768319325d0847e88f4ecbaaa2b09b1436b660a82851ec0d"
     },
     {
       "path": "README.md",
-      "bytes": 2323,
-      "sha256": "f8836a5a0fa4add8dc0d95a8eecf81b347bd276874f041a311195ec288b378c6"
+      "bytes": 2100,
+      "sha256": "5368ec882ae8b4b554ba57fc5c55dc60aafa9fb8bed27cc3f708eae7ca2278d5"
     },
     {
       "path": "TROUBLESHOOTING.md",
-      "bytes": 2379,
-      "sha256": "076010761f6fc0a2f94a8c6a339828e63f74397fb739fa0e6fcc0bf16575e0f0"
+      "bytes": 2243,
+      "sha256": "9ca2955b686a321e9c5381c5a64f9db92eb11ecb441a37e13d7a55c10d036d7a"
     },
     {
       "path": "VALIDATION_RESULTS.txt",
-      "bytes": 812,
-      "sha256": "4534e34da669534d7871bcffb5d50de0ab8af3c1c06d3bcbc66037b8f4ef8bc8"
+      "bytes": 829,
+      "sha256": "5c89c290f82a3e7a673029ff45a4c5925cc14d49a110138821326158b6bc15e5"
     },
     {
       "path": "app/__init__.py",
       "bytes": 22,
-      "sha256": "b68018cc4fe89354a2044d00a8055d5b43bc6025c2c1cc74c382404d842e24e8"
+      "sha256": "de9bc6d5d549b8711c76edfc71cf261b0a5be7b6548ec9db01efcb5544674cf4"
     },
     {
       "path": "app/alpaca.py",
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/main.py",
-      "bytes": 30532,
-      "sha256": "0bd52d03fa70c0eb27f5c31221b132c3ce8616667b573eb46829cad1a0960ca8"
+      "bytes": 30537,
+      "sha256": "b66cd678822f1fb938535e6692f8e7dde571227b9ae3abdeeba7bb2f5f4cd9c3"
     },
     {
       "path": "app/research.py",
@@ -120,8 +120,8 @@
     },
     {
       "path": "app/worker.py",
-      "bytes": 47956,
-      "sha256": "9718fbacc52d63fde2363c55c3f5b5f4d78d2ba36da778a5612eed758ccecb0c"
+      "bytes": 48015,
+      "sha256": "2c6a1019305ce04f93c3193f10dd16accd545dc88077f3fa22123aff90e2d812"
     },
     {
       "path": "examples/candidate_dates_template.csv",
@@ -141,7 +141,7 @@
     {
       "path": "scripts/check_package.py",
       "bytes": 2384,
-      "sha256": "99c3bd056aae4b917121b8674daa3211a957645a889d43dd0eb184d21bea46cc"
+      "sha256": "71e27a651a3466cf2c3025a00fecda2fb443327e4d2c9e78735171b24a9d0b94"
     },
     {
       "path": "scripts/start_web.sh",
@@ -171,7 +171,7 @@
     {
       "path": "supabase/schema.sql",
       "bytes": 12645,
-      "sha256": "47a8e72ee8cd6399018d64b3b173c3a84e1c8d5e126c5dff78cdc3e0e58f8013"
+      "sha256": "ae1f55c1ad4cc65d5bae637b5883ef0a3975e4f6b8152fdf2a8af0559030bb58"
     },
     {
       "path": "tests/conftest.py",
@@ -200,8 +200,8 @@
     },
     {
       "path": "tests/test_worker_sql.py",
-      "bytes": 2182,
-      "sha256": "40b1608dff456ee3c84b062a2061db953c8e2306fbe6db4c319248fa39ed578d"
+      "bytes": 2907,
+      "sha256": "84366f52de195df73a75987c54275f40bb5f1e6fd3ca067fdb0d86442602842a"
     }
   ]
 }

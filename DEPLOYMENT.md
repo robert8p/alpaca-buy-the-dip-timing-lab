@@ -1,10 +1,10 @@
-# Deployment — v2.2.2
+# Deployment — v2.2.1
 
 ## What this release changes
 
-v2.2.2 fixes an HTTP 500 raised when creating a historical or true-forward sealed child run. PostgreSQL returns run IDs as UUID objects; the frozen-rule JSON serializer now converts UUID and other database-native values into canonical JSON before hashing and insertion.
+v2.2.1 fixes the version shown in the web header. The header now reads the runtime package version dynamically, so it cannot remain on an older release label after deployment.
 
-No Supabase migration is required when v2.2.0 or v2.2.1 is already installed. The historical and forward protocols are unchanged.
+The v2.2 historical sealed backtest and true-forward sealed test remain unchanged.
 
 ## 1. Run the Supabase migration
 
@@ -50,7 +50,7 @@ Five rows should be returned.
 
 ## 2. Update GitHub
 
-1. Extract `alpaca_dip_reversal_trigger_lab_v2.2.2.zip`.
+1. Extract `alpaca_dip_reversal_trigger_lab_v2.2.1.zip`.
 2. Upload everything inside the extracted folder to the existing repository.
 3. Replace existing files.
 4. Ensure this new file exists:
@@ -62,7 +62,7 @@ supabase/migration_v2_2_historical_and_forward.sql
 5. Commit:
 
 ```text
-Fix sealed child-run JSON serialization
+Add sealed historical and forward 30-to-90 testing
 ```
 
 ## 3. Redeploy Render
@@ -79,7 +79,7 @@ No environment-variable changes are required.
 Expected build:
 
 ```text
-45 passed
+44 passed
 ```
 
 Expected health version:
@@ -87,7 +87,7 @@ Expected health version:
 ```json
 {
   "status": "ok",
-  "version": "2.2.2",
+  "version": "2.2.1",
   "trading_enabled": false
 }
 ```
@@ -166,3 +166,8 @@ forward_90_pass_for_paper_testing
 - Forward 90 pass: supports tightly controlled paper testing.
 - Any fail: reject the frozen trigger.
 - Inconclusive: insufficient independent signals; do not alter thresholds inside the run.
+
+
+## Upgrading from v2.2.2 after a failed backtest
+
+No Supabase migration is required. Deploy v2.2.3 to both services, open the failed historical or forward child run, and use Retry/Resume. The frozen configuration and parent link remain unchanged.

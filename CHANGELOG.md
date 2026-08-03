@@ -1,11 +1,11 @@
 # Changelog
 
-## 2.2.2
+## v2.2.3
 
-- Fixed sealed historical and forward child-run creation failing with HTTP 500 when PostgreSQL UUID values were embedded in the frozen JSON configuration.
-- Canonical frozen configuration serialization now handles UUID, date, time, datetime, Decimal, lists and nested dictionaries.
-- Added a regression test proving the frozen confirmation payload is standard JSON serialisable before database insertion.
-- No Supabase migration is required.
+- Fixed historical and forward confirmation runs failing with PostgreSQL `IndeterminateDatatype` while updating sealed-window metadata.
+- Added explicit PostgreSQL casts for parameters passed into `jsonb_build_object`.
+- Added regression coverage for 30-to-90 session window resolution and extension metadata.
+- Failed v2.2.2 confirmation runs can be retried after deployment; no schema migration is required.
 
 ## 2.2.1
 
