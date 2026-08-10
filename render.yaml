@@ -2,7 +2,7 @@ services:
   - type: web
     name: alpaca-dip-timing-web
     runtime: docker
-    plan: starter
+    plan: free
     autoDeploy: true
     healthCheckPath: /health
     envVars:
