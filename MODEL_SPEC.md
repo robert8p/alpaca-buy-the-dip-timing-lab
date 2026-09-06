@@ -1,4 +1,4 @@
-# Model and confirmation specification — v2.2.1
+# Model and confirmation specification — v2.2.4
 
 ## Objective
 
@@ -55,6 +55,10 @@ A forward child must:
 - Same-bar target and stop is treated as stop-first.
 - Gap-through stops exit at the worse opening price.
 - Selection and gates use the highest configured cost assumption.
+- Coverage is checked using only minutes available at the trigger, with complete recent minute history. Later missing bars cannot remove an earlier signal from the candidate population.
+- Missing SPY minutes cannot provide relative-strength confirmation.
+- A missing minute before the recorded exit makes the outcome unresolved. Unresolved outcomes remain counted in candidate evidence and block promotion, rather than being silently discarded from a profitable subset.
+- Frozen confirmation configurations include the execution evidence version. Historical results remain available but require a new discovery and confirmation run under current checks; old and new evidence cannot silently be combined.
 
 ## Thirty-session gate
 

@@ -3,6 +3,9 @@
 {% block content %}
 {% if run.status in ['queued','running'] %}<script>setTimeout(function(){window.location.reload();},15000);</script>{% endif %}
 <a class="back" href="/">← Dashboard</a>
+{% if run.status in ['completed','completed_with_warnings'] and (not run.result_json or run.result_json.evidence_version != evidence_version) %}
+<div class="alert danger"><strong>Historical result requires fresh validation.</strong> This run predates checks for missing price minutes and stale market comparisons. Its saved result is preserved; start a new discovery run before relying on it for confirmation.</div>
+{% endif %}
 <section class="hero compact">
   <div><div class="eyebrow">RUN {{ run.id }}</div><h1>{{ run.name }}</h1><p>{{ run.start_date }} to {{ run.end_date }} · {{ run.run_mode or 'discovery' }} · {{ run.source_mode }} · search {{ run.search_start_et }}–{{ run.search_end_et }} ET</p></div>
   <div class="verdict card"><small>Current verdict</small><strong>{{ run.verdict or 'pending' }}</strong><span>Winner: {% if run.winner_recipe %}{{ run.winner_segment }} · {{ run.winner_recipe }}{% else %}none{% endif %}</span>{% if not run.winner_recipe and run.result_json and run.result_json.best_validation_recipe_diagnostic_only %}<small>Diagnostic best only: {{ run.result_json.best_validation_segment_diagnostic_only }} · {{ run.result_json.best_validation_recipe_diagnostic_only }}</small>{% endif %}</div>

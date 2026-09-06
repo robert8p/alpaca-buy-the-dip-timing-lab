@@ -23,13 +23,15 @@ from .research import (
     FORWARD_MAX_SESSIONS,
     SEGMENTS,
     TRIGGER_RECIPES,
+    EVIDENCE_VERSION,
+    IncompleteTrialEvidence,
     assign_chronological_splits,
     bars_to_frame,
     benjamini_hochberg,
     find_trigger_event,
     frozen_config_payload,
-    legacy_frozen_config_payload,
     frozen_config_sha256,
+    verify_frozen_evidence_contract,
     job_marks_historical_calibration,
     latest_candidate_availability,
     materially_consistent,
@@ -408,14 +410,8 @@ async def _process_candidate(run: dict[str, Any], candidate: dict[str, Any], alp
             quality.append("insufficient_history_bars")
             execute("update public.dip_trigger_candidates set status='skipped',bar_count=%s,last_error='insufficient_history_bars',quality_flags=%s,completed_at=now() where id=%s", (len(frame), Jsonb(quality), candidate_id))
             return
-        coverage_end = min(datetime.combine(trade_date, run["search_end_et"], tzinfo=NY), session_close - timedelta(minutes=1))
-        expected_bars = max(1, int((coverage_end - session_open).total_seconds() // 60) + 1)
-        observed_bars = int((frame["timestamp"] <= pd.Timestamp(coverage_end)).sum())
-        coverage = observed_bars / expected_bars
-        if coverage < 0.95:
-            quality.append(f"insufficient_minute_coverage_{coverage:.3f}")
-            execute("update public.dip_trigger_candidates set status='skipped',bar_count=%s,last_error='insufficient_minute_coverage',quality_flags=%s,completed_at=now() where id=%s", (len(frame), Jsonb(quality), candidate_id))
-            return
+        # Coverage is checked at each trigger in find_trigger_event. Filtering on
+        # the later search window would select earlier signals using future data.
         benchmark = await _benchmark_frame(trade_date, session_open, session_close, alpaca, benchmark_cache)
         if benchmark.empty:
             quality.append("spy_benchmark_unavailable")
@@ -432,7 +428,6 @@ async def _process_candidate(run: dict[str, Any], candidate: dict[str, Any], alp
         winner_only = str(run.get("winner_recipe") or "") if candidate["split"] == "sealed_test" else ""
         recipes = [winner_only] if winner_only else [str(x) for x in run["trigger_recipes"]]
         results = []
-        expected_close_bar = pd.Timestamp(session_close - timedelta(minutes=1))
         for recipe in recipes:
             if recipe not in TRIGGER_RECIPES:
                 quality.append(f"unknown_recipe_{recipe}")
@@ -447,9 +442,13 @@ async def _process_candidate(run: dict[str, Any], candidate: dict[str, Any], alp
             if candidate["split"] == "sealed_test" and not segment_matches(event.entry_price, str(run.get("winner_segment") or "all")):
                 quality.append(f"outside_frozen_segment_{run.get('winner_segment') or 'all'}")
                 continue
-            result = simulate_trial(frame, event, float(run["target_gross_pct"]), float(run["stop_loss_pct"]))
-            if result.exit_reason == "market_close" and frame.iloc[-1]["timestamp"] != expected_close_bar:
-                quality.append(f"incomplete_close_path_{recipe}")
+            try:
+                result = simulate_trial(frame, event, float(run["target_gross_pct"]), float(run["stop_loss_pct"]), session_close)
+            except IncompleteTrialEvidence as exc:
+                # Retain the missing-outcome count in the candidate audit. A
+                # later target must not replace an unknown intervening path.
+                quality.append(f"unresolved_outcome_{recipe}")
+                _issue(str(run["id"]), "outcome_evidence", str(exc), "warning", candidate_id, candidate["symbol"], trade_date)
                 continue
             results.append(result)
         _insert_trials(run, candidate, results)
@@ -520,7 +519,7 @@ def _trial_frame(run_id: str, sealed_opened: bool) -> pd.DataFrame:
     rows = fetch_all(
         """
         select symbol,trade_date,split,recipe_key,trigger_at,entry_at,entry_price,target_hit,stop_hit,
-               gross_return_pct,max_gain_pct,max_drawdown_pct
+               gross_return_pct,max_gain_pct,max_drawdown_pct,trigger_features
         from public.dip_trigger_trials
         where run_id=%s and (%s or split <> 'sealed_test')
         order by trade_date,symbol,recipe_key
@@ -538,6 +537,28 @@ def _segment_frame(frame: pd.DataFrame, segment: str) -> pd.DataFrame:
     return frame[frame["entry_price"].map(lambda value: segment_matches(float(value), segment))]
 
 
+def _outcome_evidence_counts(run_id: str) -> dict[tuple[str, str], int]:
+    rows = fetch_all(
+        """
+        select split,flag,count(*) as n
+        from public.dip_trigger_candidates c
+        cross join lateral jsonb_array_elements_text(c.quality_flags) as flags(flag)
+        where c.run_id=%s and (flag like 'unresolved_outcome_%%' or flag like 'incomplete_close_path_%%')
+        group by split,flag
+        """, (run_id,),
+    )
+    counts: dict[tuple[str, str], int] = {}
+    for row in rows:
+        recipe = str(row["flag"]).removeprefix("unresolved_outcome_").removeprefix("incomplete_close_path_")
+        key = (str(row["split"]), recipe)
+        counts[key] = counts.get(key, 0) + int(row["n"])
+    return counts
+
+
+def _with_outcome_evidence(metrics: dict[str, Any], counts: dict[tuple[str, str], int], split: str, recipe: str) -> dict[str, Any]:
+    return {**metrics, "unresolved_outcomes": counts.get((split, recipe), 0), "evidence_version": EVIDENCE_VERSION}
+
+
 def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, dict[str, Any]]:
     costs = sorted({int(x) for x in run["cost_bps"]})
     selection_cost = max(costs)
@@ -545,6 +566,7 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
 
     if run.get("run_mode") in {"forward_sealed", "historical_sealed"}:
         return _compute_confirmation_metrics(run, frame, selection_cost)
+    outcome_counts = _outcome_evidence_counts(str(run["id"]))
 
     if run.get("sealed_opened"):
         winner = run.get("winner_recipe")
@@ -554,6 +576,7 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
             return winner, segment, "sealed_test_unavailable", {"reason": "No frozen winner or no sealed trials"}
         sealed = _segment_frame(frame[(frame["split"] == "sealed_test") & (frame["recipe_key"] == winner)], segment)
         metrics = performance_metrics(sealed, selection_cost, settings.bootstrap_iterations, float(run["target_net_pct"])) if not sealed.empty else {"observations": 0}
+        metrics = _with_outcome_evidence(metrics, outcome_counts, "sealed_test", str(winner))
         p_value = float(metrics.get("bootstrap_p_one_sided") if metrics.get("bootstrap_p_one_sided") is not None else 1.0)
         _write_metric(str(run["id"]), "sealed_test", segment, selection_cost, str(winner), metrics, p_value, p_value)
         strong = materially_consistent(metrics, p_value, True)
@@ -561,6 +584,7 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
         compelling = compelling_small_sample(metrics, p_value)
         verdict = "validated_for_paper_testing" if strong else ("promising_but_unproven" if promising else ("compelling_but_not_validated" if compelling else "rejected"))
         return str(winner), segment, verdict, {
+            "evidence_version": EVIDENCE_VERSION,
             "selection_cost_bps": selection_cost,
             "sealed_test_opened": True,
             "sealed_test_processed": True,
@@ -583,6 +607,7 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
                 for recipe in sorted(segmented["recipe_key"].unique()) if not segmented.empty else []:
                     subset = segmented[segmented["recipe_key"] == recipe]
                     metrics = performance_metrics(subset, cost, settings.bootstrap_iterations, float(run["target_net_pct"]))
+                    metrics = _with_outcome_evidence(metrics, outcome_counts, split, recipe)
                     p_value = float(metrics.get("bootstrap_p_one_sided") if metrics.get("bootstrap_p_one_sided") is not None else 1.0)
                     groups.append({"split": split, "segment_key": segment, "cost_bps": cost, "recipe_key": recipe, "metrics": metrics, "p_value": p_value})
                     p_values.append(p_value)
@@ -605,6 +630,8 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
             return False
         metrics = discovery["metrics"]
         return (
+            not any(metrics.get(key, 0) for key in ("unresolved_outcomes", "invalid_outcomes", "legacy_evidence_observations"))
+            and
             metrics.get("observations", 0) >= 12
             and metrics.get("independent_dates", 0) >= 3
             and metrics.get("symbols", 0) >= 5
@@ -628,9 +655,11 @@ def _compute_metrics(run: dict[str, Any]) -> tuple[str | None, str | None, str, 
         else "rejected_no_materially_consistent_trigger"
     )
     result = {
+        "evidence_version": EVIDENCE_VERSION,
         "selection_cost_bps": selection_cost,
         "winner_recipe": winner_key,
         "winner_segment": winner_segment,
+        "winner_validation_metrics": winner["metrics"] if winner else None,
         "best_validation_recipe_diagnostic_only": diagnostic["recipe_key"] if diagnostic else None,
         "best_validation_segment_diagnostic_only": diagnostic["segment_key"] if diagnostic else None,
         "best_validation_metrics_diagnostic_only": diagnostic["metrics"] if diagnostic else None,
@@ -656,11 +685,7 @@ def _confirmation_anchor(run: dict[str, Any]) -> date:
 
 
 def _verify_frozen_confirmation(run: dict[str, Any], recipe: str, segment: str) -> None:
-    stored = str(run.get("frozen_config_sha256") or "")
-    current = frozen_config_sha256(frozen_config_payload(run, recipe, segment))
-    legacy = frozen_config_sha256(legacy_frozen_config_payload(run, recipe, segment))
-    if stored not in {current, legacy}:
-        raise RuntimeError("Frozen confirmation configuration integrity check failed")  # v2.1 wording: Frozen forward configuration integrity check failed
+    verify_frozen_evidence_contract(run, recipe, segment)  # v2.1 wording: Frozen forward configuration integrity check failed
 
 
 async def _resolve_calendar_for_run(run: dict[str, Any], alpaca: AlpacaClient) -> list[dict[str, Any]] | None:
@@ -769,6 +794,7 @@ def _compute_confirmation_metrics(run: dict[str, Any], frame: pd.DataFrame, sele
     execute("delete from public.dip_trigger_metrics where run_id=%s and split='sealed_test'", (run["id"],))
     frozen = _segment_frame(frame[(frame["split"] == "sealed_test") & (frame["recipe_key"] == winner)], segment) if not frame.empty else frame
     metrics = performance_metrics(frozen, selection_cost, settings.bootstrap_iterations, float(run["target_net_pct"])) if not frozen.empty else {"observations": 0}
+    metrics = _with_outcome_evidence(metrics, _outcome_evidence_counts(str(run["id"])), "sealed_test", winner)
     p_value = float(metrics.get("bootstrap_p_one_sided") if metrics.get("bootstrap_p_one_sided") is not None else 1.0)
     _write_metric(str(run["id"]), "sealed_test", segment, selection_cost, winner, metrics, p_value, p_value)
     target_sessions = _confirmation_target_sessions(run)
@@ -781,6 +807,7 @@ def _compute_confirmation_metrics(run: dict[str, Any], frame: pd.DataFrame, sele
         else "Historical sealed evidence: an earlier non-overlapping block tests the frozen rule without re-selection."
     )
     result.update({
+        "evidence_version": EVIDENCE_VERSION,
         "selection_cost_bps": selection_cost,
         "confirmation_target_sessions": target_sessions,
         "confirmation_metrics": metrics,

@@ -21,7 +21,7 @@ from .db import connection, execute, fetch_all, fetch_one
 from .exports import build_run_export
 from .research import (
     CONFIRMATION_INITIAL_SESSIONS, CONFIRMATION_MAX_SESSIONS, FORWARD_INITIAL_SESSIONS, FORWARD_MAX_SESSIONS,
-    TRIGGER_RECIPES, frozen_config_payload, frozen_config_sha256,
+    EVIDENCE_VERSION, TRIGGER_RECIPES, discovery_evidence_is_current, frozen_config_payload, frozen_config_sha256,
 )
 
 NY = ZoneInfo("America/New_York")
@@ -32,6 +32,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, same_s
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["app_version"] = __version__
+templates.env.globals["evidence_version"] = EVIDENCE_VERSION
 
 
 def _require_auth(request: Request) -> RedirectResponse | None:
@@ -203,6 +204,8 @@ def _completed_parent(parent_run_id: str) -> dict:
         raise HTTPException(status_code=400, detail="Create confirmation tests from the discovery run, not from another confirmation child")
     if parent["status"] not in {"completed", "completed_with_warnings"}:
         raise HTTPException(status_code=400, detail="The parent discovery run must be complete")
+    if not discovery_evidence_is_current(parent.get("result_json") or {}):
+        raise HTTPException(status_code=400, detail="Create a new discovery run with the current evidence checks before starting confirmation; the historical result remains available")
     recipe = str(parent.get("winner_recipe") or "")
     segment = str(parent.get("winner_segment") or "")
     if not recipe or recipe not in TRIGGER_RECIPES or not segment:

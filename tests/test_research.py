@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from app.research import (
     NY,
@@ -350,3 +351,101 @@ def test_frozen_confirmation_config_is_plain_json_serialisable():
     assert str(parent_id) in encoded
     assert payload["confirmation_anchor_date"] == "2026-07-03"
     assert payload["search_start_et"] == "09:45:00"
+
+
+def test_gap_before_later_target_is_unresolved_not_a_win():
+    from app.research import IncompleteTrialEvidence
+    frame = make_frame([10, 10, 10, 10.6]).drop(index=2).reset_index(drop=True)
+    event = TriggerEvent("x", 0, 1, frame.loc[0, "timestamp"].to_pydatetime(), frame.loc[1, "timestamp"].to_pydatetime(), 10, {})
+    with pytest.raises(IncompleteTrialEvidence, match="missing_minute_before_exit"):
+        simulate_trial(frame, event, 5, 5)
+
+
+def test_gap_after_completed_exit_does_not_invalidate_observed_win():
+    frame = make_frame([10, 10.6, 10, 10]).drop(index=2).reset_index(drop=True)
+    event = TriggerEvent("x", 0, 1, frame.loc[0, "timestamp"].to_pydatetime(), frame.loc[1, "timestamp"].to_pydatetime(), 10, {})
+    result = simulate_trial(frame, event, 5, 5)
+    assert result.target_hit and result.exit_at == event.entry_at
+
+
+def test_missing_close_bar_is_unknown_even_when_last_observed_return_is_positive():
+    from app.research import IncompleteTrialEvidence
+    frame = make_frame([10, 10.1, 10.2])
+    event = TriggerEvent("x", 0, 1, frame.loc[0, "timestamp"].to_pydatetime(), frame.loc[1, "timestamp"].to_pydatetime(), 10, {})
+    close = datetime.combine(date(2026, 7, 20), time(16), tzinfo=NY)
+    with pytest.raises(IncompleteTrialEvidence, match="missing_exact_session_close_bar"):
+        simulate_trial(frame, event, 5, 5, close)
+
+
+def test_missing_minute_cannot_turn_row_count_into_minute_confirmation():
+    frame = deep_reversal_frame()
+    frame.loc[20:, "timestamp"] += pd.Timedelta(minutes=1)
+    event = find_trigger_event(frame, None, "deep_higher_low", frame.iloc[20]["timestamp"].to_pydatetime(), frame.iloc[-2]["timestamp"].to_pydatetime(), config())
+    assert event is None
+
+
+def test_future_missing_bars_do_not_change_an_earlier_confirmed_trigger():
+    frame = deep_reversal_frame()
+    original = find_trigger_event(frame, None, "deep_higher_low", frame.iloc[20]["timestamp"].to_pydatetime(), frame.iloc[-2]["timestamp"].to_pydatetime(), config())
+    assert original is not None
+    changed = frame.loc[:original.entry_idx].copy()
+    rescored = find_trigger_event(changed, None, "deep_higher_low", frame.iloc[20]["timestamp"].to_pydatetime(), frame.iloc[-2]["timestamp"].to_pydatetime(), config())
+    assert rescored is not None and rescored.trigger_at == original.trigger_at
+
+
+def test_stale_benchmark_does_not_supply_relative_strength_confirmation():
+    frame = deep_reversal_frame()
+    benchmark = frame[["timestamp", "close"]].copy().iloc[:30]
+    features = enrich_intraday_features(frame, benchmark)
+    assert features.loc[30:, "benchmark_close"].isna().all()
+    assert not features.loc[30:, "relative_turn"].any()
+
+
+def test_invalid_and_legacy_outcomes_block_all_promotion_gates():
+    from app.research import EVIDENCE_VERSION, compelling_small_sample, evaluate_confirmation_gate
+    frame = metric_frame(120)
+    frame["trigger_features"] = [{"evidence_version": EVIDENCE_VERSION} for _ in range(len(frame))]
+    frame.loc[0, "gross_return_pct"] = float("inf")
+    frame.at[1, "trigger_features"] = {}
+    metrics = performance_metrics(frame, 50, 100, 3)
+    assert metrics["observations"] == 119
+    assert metrics["invalid_outcomes"] == 1
+    assert metrics["legacy_evidence_observations"] == 1
+    assert np.isfinite(metrics["mean_net_return_pct"])
+    assert not materially_consistent(metrics, 0.001)
+    assert not compelling_small_sample(metrics, 0.001)
+    _, passed, gate = evaluate_confirmation_gate(metrics, 30, "historical_sealed")
+    assert not passed and not gate["requirements"]["complete_current_evidence"]
+
+
+def test_unresolved_losses_cannot_be_dropped_to_promote_the_observed_winners():
+    from app.research import evaluate_confirmation_gate
+    metrics = performance_metrics(metric_frame(20), 50, 100, 3)
+    _, passed, _ = evaluate_confirmation_gate(metrics, 30, "historical_sealed")
+    assert passed
+    metrics["unresolved_outcomes"] = 1
+    _, passed, gate = evaluate_confirmation_gate(metrics, 30, "historical_sealed")
+    assert not passed and not gate["requirements"]["complete_current_evidence"]
+
+
+def test_frozen_confirmation_rejects_silent_execution_version_change():
+    from app.research import EVIDENCE_VERSION, frozen_config_sha256, verify_frozen_evidence_contract
+    run = {"id": "example"}
+    frozen = frozen_config_payload(run, "deep_higher_low", "all")
+    assert frozen["evidence_version"] == EVIDENCE_VERSION
+    run["frozen_config_sha256"] = frozen_config_sha256(frozen)
+    verify_frozen_evidence_contract(run, "deep_higher_low", "all")
+    old = dict(frozen)
+    old.pop("evidence_version")
+    run["frozen_config_sha256"] = frozen_config_sha256(old)
+    with pytest.raises(RuntimeError, match="predates"):
+        verify_frozen_evidence_contract(run, "deep_higher_low", "all")
+
+
+def test_rescoring_a_legacy_parent_does_not_unlock_new_confirmation():
+    from app.research import EVIDENCE_VERSION, discovery_evidence_is_current
+    result = {"evidence_version": EVIDENCE_VERSION, "sealed_metrics": {"observations": 20, "legacy_evidence_observations": 20}}
+    assert not discovery_evidence_is_current(result)
+    result["sealed_metrics"]["legacy_evidence_observations"] = 0
+    assert discovery_evidence_is_current(result)
+    assert not discovery_evidence_is_current({"evidence_version": EVIDENCE_VERSION})

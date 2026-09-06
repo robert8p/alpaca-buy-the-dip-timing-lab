@@ -17,6 +17,24 @@ from scipy.stats import ttest_1samp
 NY = ZoneInfo("America/New_York")
 UTC = ZoneInfo("UTC")
 LONDON = ZoneInfo("Europe/London")
+EVIDENCE_VERSION = "dip-minute-integrity-v1"
+
+
+class IncompleteTrialEvidence(ValueError):
+    """The observed path cannot establish an ordered executable outcome."""
+
+
+def evidence_is_complete(metrics: dict[str, Any]) -> bool:
+    return not any(int(metrics.get(key) or 0) for key in (
+        "unresolved_outcomes", "invalid_outcomes", "legacy_evidence_observations",
+    ))
+
+
+def discovery_evidence_is_current(result: dict[str, Any]) -> bool:
+    metrics = result.get("sealed_metrics") or result.get("winner_validation_metrics") or {}
+    return (result.get("evidence_version") == EVIDENCE_VERSION
+            and int(metrics.get("observations") or 0) > 0
+            and evidence_is_complete(metrics))
 
 TRIGGER_RECIPES: dict[str, str] = {
     "deep_higher_low": "Deep washout seen recently, then first higher-low green bar",
@@ -77,6 +95,7 @@ def frozen_config_payload(run: dict[str, Any], recipe: str, segment: str) -> dic
     included to prevent a historical test being relabelled as a forward test (or vice versa).
     """
     payload = legacy_frozen_config_payload(run, recipe, segment)
+    payload["evidence_version"] = EVIDENCE_VERSION
     for key in ("run_mode", "parent_run_id", "confirmation_anchor_date", "backtest_scope"):
         payload[key] = _serialise_frozen_value(run.get(key))
     return payload
@@ -85,6 +104,13 @@ def frozen_config_payload(run: dict[str, Any], recipe: str, segment: str) -> dic
 def frozen_config_sha256(payload: dict[str, Any]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def verify_frozen_evidence_contract(run: dict[str, Any], recipe: str, segment: str) -> None:
+    stored = str(run.get("frozen_config_sha256") or "")
+    current = frozen_config_sha256(frozen_config_payload(run, recipe, segment))
+    if stored != current:
+        raise RuntimeError("Frozen confirmation configuration integrity check failed: this run predates the current execution evidence version or its rule changed; create a new discovery and confirmation run")
 
 
 def evaluate_confirmation_gate(metrics: dict[str, Any], target_sessions: int, run_mode: str) -> tuple[str, bool, dict[str, Any]]:
@@ -108,6 +134,7 @@ def evaluate_confirmation_gate(metrics: dict[str, Any], target_sessions: int, ru
 
     if target_sessions <= CONFIRMATION_INITIAL_SESSIONS:
         requirements = {
+            "complete_current_evidence": evidence_is_complete(metrics),
             "minimum_observations": observations >= 5,
             "minimum_dates": dates >= 5,
             "minimum_symbols": symbols >= 5,
@@ -129,6 +156,7 @@ def evaluate_confirmation_gate(metrics: dict[str, Any], target_sessions: int, ru
         )
     else:
         requirements = {
+            "complete_current_evidence": evidence_is_complete(metrics),
             "minimum_observations": observations >= 12,
             "minimum_dates": dates >= 10,
             "minimum_symbols": symbols >= 10,
@@ -245,7 +273,7 @@ def bars_to_frame(
     frame = pd.DataFrame(raw_bars).rename(
         columns={"t": "timestamp", "o": "open", "h": "high", "l": "low", "c": "close", "v": "volume", "vw": "vwap", "n": "trade_count"}
     )
-    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True).dt.tz_convert(NY)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce").dt.tz_convert(NY)
     for column in columns[1:]:
         if column not in frame:
             frame[column] = np.nan
@@ -321,12 +349,14 @@ def enrich_intraday_features(frame: pd.DataFrame, benchmark: pd.DataFrame | None
     if benchmark is not None and not benchmark.empty:
         bench = benchmark[["timestamp", "close"]].copy().rename(columns={"close": "benchmark_close"})
         work = work.merge(bench, on="timestamp", how="left")
-        work["benchmark_close"] = work["benchmark_close"].ffill()
-        work["benchmark_ret_3m_pct"] = work["benchmark_close"].pct_change(3) * 100.0
-        work["benchmark_ret_5m_pct"] = work["benchmark_close"].pct_change(5) * 100.0
+        # A missing SPY minute is unavailable evidence, never a flat market move.
+        work["benchmark_ret_3m_pct"] = work["benchmark_close"].pct_change(3, fill_method=None) * 100.0
+        work["benchmark_ret_5m_pct"] = work["benchmark_close"].pct_change(5, fill_method=None) * 100.0
         work["relative_3m_pct"] = work["ret_3m_pct"] - work["benchmark_ret_3m_pct"]
         work["relative_5m_pct"] = work["ret_5m_pct"] - work["benchmark_ret_5m_pct"]
         work["relative_turn"] = (work["relative_3m_pct"] > 0) & (work["relative_5m_pct"].shift(3) < 0)
+        benchmark_complete = work["benchmark_close"].notna().rolling(9, min_periods=9).sum() == 9
+        work["relative_turn"] &= benchmark_complete
     else:
         work["benchmark_close"] = np.nan
         work["benchmark_ret_3m_pct"] = np.nan
@@ -385,6 +415,14 @@ def find_trigger_event(
     max_price = float(config.get("max_price", 50.0))
     volume_climax_ratio = float(config.get("volume_climax_ratio", 2.5))
     min_history_bars = int(config.get("min_history_bars", 30))
+    # Rolling recipes are defined in minutes, not an arbitrary number of trades.
+    # Test only information available by each candidate trigger; future session
+    # coverage must not determine whether an earlier candidate is admitted.
+    history_minutes = max(min_history_bars, memory, 35)
+    minute_steps = work["timestamp"].diff().eq(pd.Timedelta(minutes=1))
+    work["history_complete"] = minute_steps.rolling(history_minutes, min_periods=history_minutes).sum() == history_minutes
+    elapsed_minutes = (work["timestamp"] - work.iloc[0]["timestamp"]).dt.total_seconds() / 60 + 1
+    work["coverage_at_trigger"] = (np.arange(len(work)) + 1) / elapsed_minutes
 
     oversold_now = (
         (work["drawdown_from_high_pct"] <= -min_dd_high)
@@ -406,6 +444,8 @@ def find_trigger_event(
         if idx < min_history_bars or idx + 1 >= len(work):
             continue
         row = work.loc[idx]
+        if not bool(row["history_complete"]) or float(row["coverage_at_trigger"]) < 0.95:
+            continue
         price = float(row["close"])
         if not (min_price <= price <= max_price):
             continue
@@ -436,6 +476,8 @@ def find_trigger_event(
             else:
                 features[name] = float(value)
         features["recipe_description"] = TRIGGER_RECIPES[recipe]
+        features["evidence_version"] = EVIDENCE_VERSION
+        features["coverage_at_trigger"] = float(row["coverage_at_trigger"])
         entry_row = work.loc[idx + 1]
         return TriggerEvent(
             recipe_key=recipe,
@@ -454,6 +496,7 @@ def simulate_trial(
     event: TriggerEvent,
     target_gross_pct: float,
     stop_loss_pct: float,
+    session_close: datetime | None = None,
 ) -> TrialResult:
     entry_idx = event.entry_idx
     if entry_idx >= len(frame):
@@ -472,11 +515,15 @@ def simulate_trial(
     observed_high = entry_price
     observed_low = entry_price
 
+    previous_timestamp = None
     for row_idx, row in frame.loc[entry_idx:].iterrows():
         open_price = float(row["open"])
         row_high = float(row["high"])
         row_low = float(row["low"])
         timestamp = row["timestamp"].to_pydatetime()
+        if previous_timestamp is not None and pd.Timestamp(timestamp) - previous_timestamp != pd.Timedelta(minutes=1):
+            raise IncompleteTrialEvidence("missing_minute_before_exit")
+        previous_timestamp = pd.Timestamp(timestamp)
         if row_idx != entry_idx and open_price <= stop_price:
             observed_low = min(observed_low, open_price)
             observed_high = max(observed_high, open_price)
@@ -510,6 +557,11 @@ def simulate_trial(
             break
         observed_high = max(observed_high, row_high)
         observed_low = min(observed_low, row_low)
+
+    if exit_reason == "market_close" and session_close is not None:
+        expected_last_minute = pd.Timestamp(session_close) - pd.Timedelta(minutes=1)
+        if pd.Timestamp(exit_at) != expected_last_minute:
+            raise IncompleteTrialEvidence("missing_exact_session_close_bar")
 
     return TrialResult(
         recipe_key=event.recipe_key,
@@ -615,6 +667,19 @@ def performance_metrics(frame: pd.DataFrame, cost_bps: int, bootstrap_iterations
     if frame.empty:
         return {"observations": 0}
     work = frame.copy()
+    gross_returns = pd.to_numeric(work["gross_return_pct"], errors="coerce")
+    invalid_count = int((~np.isfinite(gross_returns)).sum())
+    legacy_count = 0
+    if "trigger_features" in work:
+        legacy_count = int(work["trigger_features"].map(
+            lambda value: not isinstance(value, dict) or value.get("evidence_version") != EVIDENCE_VERSION
+        ).sum())
+    work = work[np.isfinite(gross_returns)].copy()
+    integrity = {"invalid_outcomes": invalid_count, "legacy_evidence_observations": legacy_count,
+                 "evidence_version": EVIDENCE_VERSION, "total_trials": len(frame)}
+    if work.empty:
+        return {"observations": 0, **integrity}
+    work["gross_return_pct"] = gross_returns.loc[work.index]
     work["net_return_pct"] = (work["gross_return_pct"] - cost_bps / 100.0).round(10)
     work["net_target_success"] = work["net_return_pct"] >= float(net_target_pct) - 1e-9
     work["loss_5pct"] = work["net_return_pct"] <= -5.0
@@ -640,6 +705,7 @@ def performance_metrics(frame: pd.DataFrame, cost_bps: int, bootstrap_iterations
         else:
             t_p = float(ttest_1samp(daily, 0, alternative="greater", nan_policy="omit").pvalue)
     return {
+        **integrity,
         "observations": int(len(work)),
         "independent_dates": int(work["trade_date"].nunique()),
         "symbols": int(work["symbol"].nunique()),
@@ -674,6 +740,8 @@ def performance_metrics(frame: pd.DataFrame, cost_bps: int, bootstrap_iterations
 
 def materially_consistent(metrics: dict[str, Any], q_value: float, strong: bool = True) -> bool:
     """Deliberately demanding gates: consistency matters more than a high isolated average."""
+    if not evidence_is_complete(metrics):
+        return False
     if strong:
         return (
             metrics.get("observations", 0) >= 100
@@ -712,6 +780,8 @@ def materially_consistent(metrics: dict[str, Any], q_value: float, strong: bool 
 
 def compelling_small_sample(metrics: dict[str, Any], q_value: float) -> bool:
     """Exceptional-but-small evidence worthy of a frozen sealed test, never live approval."""
+    if not evidence_is_complete(metrics):
+        return False
     return (
         metrics.get("observations", 0) >= 12
         and metrics.get("independent_dates", 0) >= 3
